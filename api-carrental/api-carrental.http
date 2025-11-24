@@ -1,0 +1,6 @@
+@api_carrental_HostAddress = http://localhost:5064
+
+GET {{api_carrental_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
