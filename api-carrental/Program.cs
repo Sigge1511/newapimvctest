@@ -2,13 +2,13 @@ using api_carrental.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.AspNetCore.OpenApi;
+using Microsoft.OpenApi;
 using api_carrental.Dtos;
 using api_carrental.Repos;
-using AutoMapper;
 using Swashbuckle.AspNetCore;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
+IServiceCollection serviceCollection = new ServiceCollection();
 
 var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
