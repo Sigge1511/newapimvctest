@@ -1,7 +1,6 @@
 ﻿using assignment_mvc_carrental.Models;
 using assignment_mvc_carrental.ViewModels;
 using AutoMapper;
-using Azure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;

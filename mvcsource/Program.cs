@@ -1,10 +1,8 @@
-using api_carrental.Data;
-using api_carrental.Repos;
 using assignment_mvc_carrental.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
-namespace api_carrental
+namespace assignment_mvc_carrental
 {
     public class Program
     {

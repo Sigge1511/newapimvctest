@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.VisualStudio.Web.CodeGenerators.Mvc.Templates.BlazorIdentity.Pages;
 
 namespace api_carrental.Controllers
 {
@@ -53,7 +52,7 @@ namespace api_carrental.Controllers
             }
             catch (Exception)
             {
-                return Problem($"Something went wrong in the {nameof(Login)}", statusCode: 500);
+                return Problem($"Something went wrong in the", statusCode: 500);
             }
         }
 

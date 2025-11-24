@@ -1,9 +1,7 @@
-﻿using api_carrental.Dtos;
-using assignment_mvc_carrental.Data;
+﻿using assignment_mvc_carrental.Data;
 using assignment_mvc_carrental.Models;
 using assignment_mvc_carrental.ViewModels;
 using AutoMapper;
-using Azure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.Identity;
@@ -277,7 +275,7 @@ namespace assignment_mvc_carrental.Controllers
                 //Hämta fordon och kunder igen för ViewBags
                 //för att kunna stanna i bokningsvyn och inte bli utkastad till index igen
                 List<Vehicle> vehiclesList = await _httpClient.GetFromJsonAsync<List<Vehicle>>("VehicleDt/GetIndexAsync");
-                List<ApplicationUserDto> customersList = await _httpClient.GetFromJsonAsync<List<ApplicationUserDto>>("AppUserDt/GetCustomersIndexAsync");
+                List<ApplicationUser> customersList = await _httpClient.GetFromJsonAsync<List<ApplicationUser>>("AppUserDt/GetCustomersIndexAsync");
 
                 if (vehiclesList != null)
                 {
