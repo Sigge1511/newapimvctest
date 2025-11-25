@@ -7,6 +7,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace api_carrental.Controllers
 {
@@ -62,6 +66,74 @@ namespace api_carrental.Controllers
         }
 
 
+        [HttpPost("login")]
+        public IActionResult UserLogin([FromBody] LoginUserDto loginusermodel)
+        {
+            // ... validera användare ...
 
+            // ... skapa claims ...
+
+
+            // ...
+            return Ok();
+        }
+
+        private async Task<TokenCollection> CreateAccessToken(ApplicationUserDto appUserDto)
+        {
+            try
+            {
+                // Hämta roller
+                var roles = await _userManager.GetRolesAsync(appUserDto);
+
+                // Skapa claims och lägg i en lista
+                var claims = new List<Claim>();
+                foreach (var role in roles)
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, role));
+                }
+
+                // Hämta min key
+                var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
+                // Skapa credentials - vad är detta?
+                var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+                //Skapa sen ny JWT
+                var token = new JwtSecurityToken(
+                    issuer: _jwtSettings.Issuer,
+                    audience: _jwtSettings.Audience,
+                    claims: claims,
+                    expires: DateTime.Now.AddMinutes(_jwtSettings.AccessTokenExpInMinutes),
+                    signingCredentials: credentials);
+
+                //anropa för att få refresh token - lägg båda tokens i ett objekt och returnera
+                var tokenPair = new TokenCollection
+                {
+                    AccessToken = token,
+                    RefreshToken = await CreateRefreshToken(token)
+                };
+                return tokenPair;
+            }
+            catch (Exception)
+            {
+                var emptyTokenPair = new TokenCollection();
+                return emptyTokenPair;
+            }
+        }
+
+        private async Task<JwtSecurityToken> CreateRefreshToken(JwtSecurityToken refreshToken)
+        {
+            
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+            var token = new JwtSecurityToken(
+                issuer: _jwtSettings.Issuer,
+                audience: _jwtSettings.Audience,
+                claims: claims,
+                expires: DateTime.Now.AddMinutes(_jwtSettings.AccessTokenExpInMinutes),
+                signingCredentials: credentials);
+            // ... returnera token
+
+            return token;
+        }
     }
 }
