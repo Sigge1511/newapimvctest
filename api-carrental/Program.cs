@@ -1,19 +1,65 @@
+using api_carrental.Constants;
 using api_carrental.Data;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.OpenApi;
 using api_carrental.Dtos;
 using api_carrental.Repos;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using System.Text;
 
+
+//Skapar denna här så jag kan ha en builder även i detta projekt/fil
 IServiceCollection serviceCollection = new ServiceCollection();
 
+//*********** KOPPLA TILL DATABASEN ******************************
 var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString)); // <-- Se till att denna rad finns!
+    options.UseSqlServer(connectionString));
+
+
+//*********** BÖRJA SETUP MED JWT ******************************
+var jwtSettings = new JwtSettings(); //Finns som egen klass i mappen "Constants"
+
+//Binda inställningarna från appsettings.json till JwtSettings-klassen
+builder.Configuration.GetSection("JwtSettings").Bind(jwtSettings);
+
+//Även bra för att ha till DI senare, i tex AuthController
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+
+// Hämta säkerhetsnyckeln och konvertera den till det format som behövs (SymmetricSecurityKey)
+var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey));
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidIssuer = jwtSettings.Issuer,
+        ValidateAudience = true,
+        ValidAudience = jwtSettings.Audience,
+
+        ValidateLifetime = true, //Vad ska jag ha här????
+
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = securityKey
+    };
+});
+
+
+
+
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

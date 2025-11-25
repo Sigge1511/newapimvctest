@@ -5,11 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>api_carrental</RootNamespace>
+    <UserSecretsId>ffe3e168-8cb9-4c83-8da1-dd5a3c2d12a2</UserSecretsId>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Folder Include="Constants\" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.22" />

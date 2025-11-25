@@ -1,10 +1,12 @@
-﻿using api_carrental.Data;
+﻿using api_carrental.Constants;
+using api_carrental.Data;
 using api_carrental.Dtos;
 using api_carrental.Repos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace api_carrental.Controllers
 {
@@ -13,21 +15,24 @@ namespace api_carrental.Controllers
     public class AuthController : ControllerBase
     {
         private readonly ApplicationDbContext _applicationDbContext;
+        private readonly JwtSettings _jwtSettings;
         private readonly IApplicationUser _applicationUser;
         private readonly UserManager<ApplicationUserDto> _userManager;
         private readonly SignInManager<ApplicationUserDto> _signInManager;
 
         public AuthController(ApplicationDbContext applicationDbContext,
+                                    IOptions<JwtSettings> jwtSettings,
                                     IApplicationUser applicationUser,
                                     UserManager<ApplicationUserDto> userManager,
                                     SignInManager<ApplicationUserDto> signInManager)
         {
             _applicationDbContext = applicationDbContext;
+            _jwtSettings = jwtSettings.Value;
             _applicationUser = applicationUser;
             _userManager = userManager;
             _signInManager = signInManager;
         }
-        //***************************************************************************************************************
+//***************************************************************************************************************
 
         [HttpPost("/admin")]
         [ValidateAntiForgeryToken]
