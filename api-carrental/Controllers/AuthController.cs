@@ -127,9 +127,8 @@ namespace api_carrental.Controllers
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
             var token = new JwtSecurityToken(
                 issuer: _jwtSettings.Issuer,
-                audience: _jwtSettings.Audience,
-                claims: claims,
-                expires: DateTime.Now.AddMinutes(_jwtSettings.AccessTokenExpInMinutes),
+                audience: _jwtSettings.Audience,                
+                expires: DateTime.Now.AddMinutes(_jwtSettings.RefreshTokenExpInHours),
                 signingCredentials: credentials);
             // ... returnera token
 

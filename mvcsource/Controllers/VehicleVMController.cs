@@ -19,16 +19,16 @@ namespace assignment_mvc_carrental.Controllers
 {
     public class VehicleVMController : Controller
     {
-        private readonly HttpClient _httpClient;
+        private readonly IHttpClientFactory _clientFactory;
         private readonly IMapper _mapper;
 
         //För göra risken mindre för strul med deserialisering
         private readonly JsonSerializerOptions _jsonOptions =
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
-        public VehicleVMController(IMapper mapper, HttpClient httpClient)
+        public VehicleVMController(IMapper mapper, IHttpClientFactory clientFactory)
         {
-            _httpClient = httpClient;
+            _clientFactory = clientFactory;
             _mapper = mapper;
         }
 //***********************************************************************************************************************
@@ -39,7 +39,8 @@ namespace assignment_mvc_carrental.Controllers
         {
             try
             {
-                var response = await _httpClient.GetAsync("");
+                HttpClient client = _clientFactory.CreateClient("CarRentalApi");
+                var response = await client.GetAsync("api/VehicleDt");
                 if (!response.IsSuccessStatusCode)
                 {
                     TempData["ErrorMessage"] = $"Misslyckades hämta fordon från API. Status: {response.StatusCode}";
@@ -71,8 +72,9 @@ namespace assignment_mvc_carrental.Controllers
 
             try
             {
-                var response = await _httpClient.GetAsync($"{id.Value}");
-                if (!response.IsSuccessStatusCode)
+                HttpClient client = _clientFactory.CreateClient("CarRentalApi");
+
+                var response = await client.GetAsync($"api/VehicleDt/{id}");                if (!response.IsSuccessStatusCode)
                 {
                     if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return NotFound();
                     TempData["ErrorMessage"] = "Could not find vehicle.";
@@ -119,7 +121,9 @@ namespace assignment_mvc_carrental.Controllers
                     var vehicleToJson = JsonSerializer.Serialize(vehicle);
                     var vehicleToApi = new StringContent(vehicleToJson, Encoding.UTF8, "application/json");
 
-                    var response = await _httpClient.PostAsync("", vehicleToApi);
+                    HttpClient client = _clientFactory.CreateClient("CarRentalApi");
+
+                    var response = await client.PostAsync("api/VehicleDt", vehicleToApi);
                     if (response.IsSuccessStatusCode)
                     {
                         TempData["SuccessMessage"] = "Vehicle successfully added!";
@@ -148,7 +152,9 @@ namespace assignment_mvc_carrental.Controllers
             }
             try
             {
-                var response = await _httpClient.GetAsync($"{id.Value}");
+                HttpClient client = _clientFactory.CreateClient("CarRentalApi");
+
+                var response = await client.GetAsync($"api/VehicleDt/{id.Value}");
                 if (!response.IsSuccessStatusCode)
                 {
                     return NotFound();
@@ -190,7 +196,9 @@ namespace assignment_mvc_carrental.Controllers
                     var vehicleJson = JsonSerializer.Serialize(vehicle);
                     var vehicleToApi = new StringContent(vehicleJson, Encoding.UTF8, "application/json");
 
-                    var response = await _httpClient.PutAsync($"{id}", vehicleToApi);
+                    HttpClient client = _clientFactory.CreateClient("CarRentalApi");
+
+                    var response = await client.PutAsync($"api/VehicleDt/{id}", vehicleToApi);
                     if (response.IsSuccessStatusCode)
                     {
                         TempData["SuccessMessage"] = "Vehicle was updated!";
@@ -226,7 +234,9 @@ namespace assignment_mvc_carrental.Controllers
             }
             try
             {
-                var response = await _httpClient.GetAsync($"{id.Value}");
+                HttpClient client = _clientFactory.CreateClient("CarRentalApi");
+
+                var response = await client.GetAsync($"api/VehicleDt/{id.Value}");
                 if (!response.IsSuccessStatusCode)
                 {
                     return NotFound();
@@ -255,9 +265,11 @@ namespace assignment_mvc_carrental.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
+            HttpClient client = _clientFactory.CreateClient("CarRentalApi");
+
             try
             {
-                var response = await _httpClient.DeleteAsync($"{id}");
+                var response = await client.DeleteAsync($"api/VehicleDt/{id}");
                 if (response.IsSuccessStatusCode)
                 {
                     TempData["SuccessMessage"] = "Vehicle was deleted.";
@@ -273,7 +285,7 @@ namespace assignment_mvc_carrental.Controllers
             }
 
             // Om det misslyckas, hämta fordonet IGEN för att visa/stanna i Delete-vyn med felmeddelande
-            var vehicleResponse = await _httpClient.GetAsync($"{id}");
+            var vehicleResponse = await client.GetAsync($"api/VehicleDt/{id}");
             if (vehicleResponse.IsSuccessStatusCode)
             {
                 var vehicleInfoApi = await vehicleResponse.Content.ReadAsStringAsync();

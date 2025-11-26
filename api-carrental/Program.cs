@@ -23,16 +23,30 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 
+//*********** KOPPLA TILL IDENTITY ******************************
+builder.Services.AddIdentity<ApplicationUserDto, IdentityRole>()
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+
+//*********** SETUP FÖR CORS ************************************
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowMVCAccess",
+        policy =>
+        {
+            policy.WithOrigins("https://localhost:7090", "http://localhost:7090")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
+});
 
 //*********** BÖRJA SETUP MED JWT ******************************
 var jwtSettings = new JwtSettings(); //Finns som egen klass i mappen "Constants"
-
 //Binda inställningarna från appsettings.json till JwtSettings-klassen
 builder.Configuration.GetSection("JwtSettings").Bind(jwtSettings);
-
 //Även bra för att ha till DI senare, i tex AuthController
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
-
 // Hämta säkerhetsnyckeln och konvertera den till det format som behövs (SymmetricSecurityKey)
 var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey));
 
@@ -79,10 +93,6 @@ builder.Services.AddScoped<IApplicationUser, ApplicationUserRepo>();
 
 
 var app = builder.Build();
-if (app.Environment.IsDevelopment())
-{
-    //app.MapOpenApi();
-}
 
 if (app.Environment.IsDevelopment())
 {
@@ -93,8 +103,8 @@ if (app.Environment.IsDevelopment())
 };
 using (var scope = app.Services.CreateScope()) //skapa en admin och usermanager 
 {
-    //var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-    //var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUserDto>>();
 
     //string[] roles = { "Admin", "Customer" }; //fyller identitys userrole-tabell
 
@@ -129,6 +139,7 @@ using (var scope = app.Services.CreateScope()) //skapa en admin och usermanager
     //}
 }
 app.UseHttpsRedirection();
+app.UseCors("AllowMVCAccess");
 app.UseAuthorization();
 app.MapControllers();
 app.Run();

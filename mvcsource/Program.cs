@@ -12,11 +12,11 @@ namespace assignment_mvc_carrental
 
             builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-            builder.Services.AddHttpClient("CarRentalAPI", client =>
+            builder.Services.AddHttpClient("CarRentalApi", client =>
             {
                 // ERSÄTT XXXX MED DITT API-PROJEKTS KORREKTA HTTPS-PORT
                 // Titta i launchSettings.json i DITT API-PROJEKT (api_carrental) för att hitta porten.
-                client.BaseAddress = new Uri("https://localhost:XXXX/");
+                client.BaseAddress = new Uri(builder.Configuration["ApiSettings:BaseUrl"] ?? "http://localhost:5064/");
             });
 
             //hjälper till att skicka till inlogg om man vill hyra bil utan konto tex

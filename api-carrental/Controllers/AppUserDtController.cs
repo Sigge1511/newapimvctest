@@ -18,16 +18,19 @@ namespace api_carrental.Controllers
         private readonly IApplicationUser _applicationUser;
         private readonly UserManager<ApplicationUserDto> _userManager;
         private readonly SignInManager<ApplicationUserDto> _signInManager;
+        private readonly IBookingRepo _bookingRepo;
 
         public AppUserDtController(ApplicationDbContext applicationDbContext, 
                                     IApplicationUser applicationUser, 
                                     UserManager<ApplicationUserDto> userManager, 
-                                    SignInManager<ApplicationUserDto> signInManager)
+                                    SignInManager<ApplicationUserDto> signInManager,
+                                    IBookingRepo bookingRepo)
         {
             _applicationDbContext = applicationDbContext;
             _applicationUser = applicationUser;
             _userManager = userManager;
             _signInManager = signInManager;
+            _bookingRepo = bookingRepo;
         }
 //***************************************************************************************************************
 
