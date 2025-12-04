@@ -22,7 +22,7 @@ namespace assignment_mvc_carrental
             //hjälper till att skicka till inlogg om man vill hyra bil utan konto tex
             builder.Services.ConfigureApplicationCookie(options =>
             {
-                options.LoginPath = "/Identity/Account/Login";
+                options.LoginPath = "/Home/Login";
             });
 
             builder.Services.AddControllersWithViews();

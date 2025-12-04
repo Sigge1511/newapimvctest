@@ -2,10 +2,12 @@
 using api_carrental.Data;
 using api_carrental.Dtos;
 using api_carrental.Repos;
+using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -23,18 +25,24 @@ namespace api_carrental.Controllers
         private readonly IApplicationUser _applicationUser;
         private readonly UserManager<ApplicationUserDto> _userManager;
         private readonly SignInManager<ApplicationUserDto> _signInManager;
+        private readonly ILogger _logger;
+        private readonly IMapper _mapper;
 
         public AuthController(ApplicationDbContext applicationDbContext,
                                     IOptions<JwtSettings> jwtSettings,
                                     IApplicationUser applicationUser,
                                     UserManager<ApplicationUserDto> userManager,
-                                    SignInManager<ApplicationUserDto> signInManager)
+                                    SignInManager<ApplicationUserDto> signInManager,
+                                    ILogger logger,
+                                    IMapper mapper)
         {
             _applicationDbContext = applicationDbContext;
             _jwtSettings = jwtSettings.Value;
             _applicationUser = applicationUser;
             _userManager = userManager;
             _signInManager = signInManager;
+            _logger = logger;
+            _mapper = mapper;
         }
 //***************************************************************************************************************
 
@@ -67,15 +75,37 @@ namespace api_carrental.Controllers
 
 
         [HttpPost("login")]
-        public IActionResult UserLogin([FromBody] LoginUserDto loginusermodel)
+        public async Task<IActionResult> UserLoginAsync([FromBody] LoginUserDto loginusermodel)
         {
-            // ... validera användare ...
+            try
+            {
+                //returnUrl ??= Url.Content("~/");
+                if (ModelState.IsValid)
+                {
+                    //Behöver mappa mellan ApplicationUserDto och LoginUserDto
+                    ApplicationUserDto userDto = _mapper.Map<ApplicationUserDto>(loginusermodel);
 
-            // ... skapa claims ...
-
-
-            // ...
-            return Ok();
+                    // Skickar med false på slutet för jag vill inte
+                    // låsa kontot vid misslyckad inloggning. Kan va dumt vid felsök
+                    var result = await _signInManager.CheckPasswordSignInAsync(userDto, loginusermodel.Password, false);
+                    if (result.Succeeded)
+                    {
+                        _logger.LogInformation("User logged in.");
+                        await CreateAccessToken(userDto);
+                        return Ok(userDto);
+                    }
+                    else
+                    {
+                        return Unauthorized("Invalid login attempt.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while trying to log in.");
+                return BadRequest("Something went wrong, please try again.");
+            }
+            return BadRequest("Something went wrong, please try again.");
         }
 
         private async Task<TokenCollection> CreateAccessToken(ApplicationUserDto appUserDto)

@@ -8,6 +8,9 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/assignment_mvc_carrental.styles.css" asp-append-version="true" />
 </head>
+
+
+
 <body>
     <header>
         <nav class="navbar navbar-expand-lg mynavbar">
@@ -25,9 +28,11 @@
                         </li>                        
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-controller="VehicleVM" asp-action="Index">See all our vehicles</a>
-                        </li>                        
-                    </ul>
-                    <partial name="_LoginPartial" />
+                        </li>  
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Login">Log in</a>
+                        </li>
+                    </ul>                    
                 </div>
             </div>
         </nav>
