@@ -91,7 +91,7 @@ namespace api_carrental.Controllers
         // POST api/<AppUserDtController>
         [HttpPost]
         //ALLA SKA KUNNA SKAPA KONTO SJÄLVA
-        public async Task<IActionResult> PostUserAsync([FromBody] string value)
+        public async Task<IActionResult> PostUserAsync(ApplicationUserDto userDto)
         {
             if (!ModelState.IsValid)
             {
@@ -99,21 +99,15 @@ namespace api_carrental.Controllers
             }
 
             try
-            {
-                ApplicationUserDto customer = new ApplicationUserDto
-                {
-                    UserName = /*newuserVM.UserName*/"customerusername",
-                    Email = "/*newuserVM.Email*/"
-                }
-                ;
+            {                    
                 // Skapa användaren via repo – och få IdentityResult tillbaka
 
-                var result = await _applicationUser.AddCustomerAsync(customer);
+                var result = await _applicationUser.AddCustomerAsync(userDto);
 
                 if (result.Succeeded)
                 {
                     //om skapandet lyckades, tilldela rollen "Customer"
-                    var user = await _userManager.FindByEmailAsync(customer.Email);
+                    var user = await _userManager.FindByEmailAsync(userDto.Email);
                     if (user != null)
                     {
                         await _userManager.AddToRoleAsync(user, "Customer");

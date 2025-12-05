@@ -55,7 +55,7 @@ namespace assignment_mvc_carrental.Controllers
             try
             {
                 // Mappa Input-VM till DTO för API:et. CustomerViewModel funkar som DTO
-                var newCustomerForApi = _mapper.Map<CustomerViewModel>(newuserVM);
+                var newCustomerForApi = _mapper.Map<LoginModel>(newuserVM);
 
                 // 3. Ropa på API:et
                 // OBS: "api/user/create" måste matchas mot din endpoint i API:et.
@@ -106,7 +106,7 @@ namespace assignment_mvc_carrental.Controllers
             try
             {
                 // 1. Mappa Input-VM till DTO:t 
-                var newCustomerForApi = _mapper.Map<CustomerViewModel>(userInput);
+                var newCustomerForApi = _mapper.Map<ApplicationUser>(userInput);
 
                 // 2. Ropa på API:et (Samma endpoint som Create)                
                 var response = await _httpClient.PostAsJsonAsync("api/AppUserDt", newCustomerForApi);
@@ -116,7 +116,7 @@ namespace assignment_mvc_carrental.Controllers
                     // OBS: Jag har ändrat meddelandet för att vara mer logiskt för registrering.
                     TempData["SuccessMessage"] = "Registration successful! You can now log in.";
 
-                    return RedirectToAction(nameof(RegisterConfirmation));
+                    return RedirectToAction("Home/Index");
                 }
                 else if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
                 {

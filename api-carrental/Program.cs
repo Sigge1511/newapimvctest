@@ -28,7 +28,11 @@ builder.Services.AddIdentity<ApplicationUserDto, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-//*********** SETUP FÖR CORS ************************************
+//**************    MAPPER  **********************************************************************
+builder.Services.AddAutoMapper(typeof(MappingProfile)); 
+//mappar users vid inlogg och registrering
+
+//*********** SETUP FÖR CORS *********************************************************************
 
 builder.Services.AddCors(options =>
 {

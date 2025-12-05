@@ -26,6 +26,13 @@ namespace assignment_mvc_carrental.Data
             CreateMap<ApplicationUser, CustomerViewModel>();
 
 
+            CreateMap<ApplicationUser, UserInputViewModel>().ReverseMap();
+            CreateMap<UserInputViewModel, ApplicationUser>().ReverseMap();
+
+            CreateMap<LoginModel, UserLoginViewModel>().ReverseMap();
+            CreateMap<UserLoginViewModel, LoginModel>().ReverseMap();
+
+
         }
     }
 }

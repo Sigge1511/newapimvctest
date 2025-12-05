@@ -16,8 +16,8 @@ using System.Text;
 
 namespace api_carrental.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]    
     public class AuthController : ControllerBase
     {
         private readonly ApplicationDbContext _applicationDbContext;
@@ -25,7 +25,7 @@ namespace api_carrental.Controllers
         private readonly IApplicationUser _applicationUser;
         private readonly UserManager<ApplicationUserDto> _userManager;
         private readonly SignInManager<ApplicationUserDto> _signInManager;
-        private readonly ILogger _logger;
+        private readonly ILogger<AuthController> _logger;
         private readonly IMapper _mapper;
 
         public AuthController(ApplicationDbContext applicationDbContext,
@@ -33,7 +33,7 @@ namespace api_carrental.Controllers
                                     IApplicationUser applicationUser,
                                     UserManager<ApplicationUserDto> userManager,
                                     SignInManager<ApplicationUserDto> signInManager,
-                                    ILogger logger,
+                                    ILogger<AuthController> logger,
                                     IMapper mapper)
         {
             _applicationDbContext = applicationDbContext;
@@ -73,7 +73,6 @@ namespace api_carrental.Controllers
             }
         }
 
-
         [HttpPost("login")]
         public async Task<IActionResult> UserLoginAsync([FromBody] LoginUserDto loginusermodel)
         {
@@ -82,21 +81,30 @@ namespace api_carrental.Controllers
                 //returnUrl ??= Url.Content("~/");
                 if (ModelState.IsValid)
                 {
-                    //Behöver mappa mellan ApplicationUserDto och LoginUserDto
-                    ApplicationUserDto userDto = _mapper.Map<ApplicationUserDto>(loginusermodel);
+                    // 1. HÄMTA ANVÄNDAREN (ApplicationUserDto som Identity-typ)
+                    // Hitta den befintliga användaren i DB baserat på e-post/användarnamn
+                    var user = await _userManager.FindByEmailAsync(loginusermodel.Email);
+                    // OBS: Om du använder Username istället för Email, byt till FindByNameAsync
 
-                    // Skickar med false på slutet för jag vill inte
-                    // låsa kontot vid misslyckad inloggning. Kan va dumt vid felsök
-                    var result = await _signInManager.CheckPasswordSignInAsync(userDto, loginusermodel.Password, false);
-                    if (result.Succeeded)
+                    // 2. VALIDERAR
+                    if (user != null)
                     {
-                        _logger.LogInformation("User logged in.");
-                        await CreateAccessToken(userDto);
-                        return Ok(userDto);
-                    }
-                    else
-                    {
-                        return Unauthorized("Invalid login attempt.");
+                        // Validera lösenordet mot den HÄMTADE användaren
+                        var passwordIsValid = await _userManager.CheckPasswordAsync(user, loginusermodel.Password);
+
+                        if (passwordIsValid)
+                        {
+                            // 3. SKAPA JWT
+                            _logger.LogInformation($"User {user.Email} logged in.");
+                            await CreateAccessToken(user);
+
+                            // Mappa tillbaka till DTO för ren respons om nödvändigt, eller returnera user
+                            return Ok(_mapper.Map<LoginUserDto>(user));
+                        }
+                        else
+                        {
+                            return Unauthorized("Invalid login attempt.");
+                        }
                     }
                 }
             }
@@ -135,11 +143,16 @@ namespace api_carrental.Controllers
                     expires: DateTime.Now.AddMinutes(_jwtSettings.AccessTokenExpInMinutes),
                     signingCredentials: credentials);
 
-                //anropa för att få refresh token - lägg båda tokens i ett objekt och returnera
+                // Gör om token till sträng
+                // för att skicka med json sen
+                var tokenHandler = new JwtSecurityTokenHandler(); //Skapa omvandlare
+                var accessTokenString = tokenHandler.WriteToken(token); // Gör om till textsträng
+
                 var tokenPair = new TokenCollection
                 {
-                    AccessToken = token,
-                    RefreshToken = await CreateRefreshToken(token)
+                    AccessToken = accessTokenString, 
+                    RefreshToken = tokenHandler.WriteToken(await CreateRefreshToken(token)) 
+                    // Gör även RT till sträng
                 };
                 return tokenPair;
             }

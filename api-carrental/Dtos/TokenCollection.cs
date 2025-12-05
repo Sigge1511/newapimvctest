@@ -4,8 +4,8 @@ namespace api_carrental.Dtos
 {
     public class TokenCollection
     {
-        public JwtSecurityToken AccessToken { get; set; }
-        public JwtSecurityToken RefreshToken { get; set; }
+        public string AccessToken { get; set; }
+        public string RefreshToken { get; set; }
 
     }
 }
