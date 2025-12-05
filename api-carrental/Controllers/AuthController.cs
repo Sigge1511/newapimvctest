@@ -96,10 +96,10 @@ namespace api_carrental.Controllers
                         {
                             // 3. SKAPA JWT
                             _logger.LogInformation($"User {user.Email} logged in.");
-                            await CreateAccessToken(user);
+                            var tokenpair = await CreateAccessToken(user);
 
                             // Mappa tillbaka till DTO för ren respons om nödvändigt, eller returnera user
-                            return Ok(_mapper.Map<LoginUserDto>(user));
+                            return Ok(tokenpair);
                         }
                         else
                         {

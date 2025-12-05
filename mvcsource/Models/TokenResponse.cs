@@ -10,6 +10,6 @@ namespace assignment_mvc_carrental.Models
         [JsonPropertyName("accessToken")]
         public string AccessToken { get; set; }
         [JsonPropertyName("refreshToken")]
-        public DateTime Expiration { get; set; }
+        public string RefreshToken { get; set; }
     }
 }

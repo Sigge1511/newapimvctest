@@ -46,7 +46,7 @@ namespace assignment_mvc_carrental.Controllers
                     var tokenResponse = await result.Content.ReadFromJsonAsync<TokenResponse>();
 
                     // 2. Fortsätt till nästa steg för att hantera token
-                    await StoreTokenAndClaims(tokenResponse.AccessToken); // Se Steg 2
+                    await StoreTokenAndClaims(tokenResponse.AccessToken, tokenResponse.RefreshToken); // Se Steg 2
 
                     _logger.LogInformation("User logged in successfully and session created.");
                     return RedirectToAction("Index", "Home"); // Använd RedirectToAction för att undvika LocalRedirect-felet
@@ -83,41 +83,103 @@ namespace assignment_mvc_carrental.Controllers
         }
 
 
-        private async Task StoreTokenAndClaims(string jwtToken)
+        private async Task StoreTokenAndClaims(string accessToken, string refreshToken)
         {
-            // 1. Extrahera claims från JWT
+            // 1. Extrahera claims och utgångsdatum från Access Token (AT)
             var handler = new JwtSecurityTokenHandler();
-            var jsonToken = handler.ReadToken(jwtToken) as JwtSecurityToken;
-            var claims = jsonToken.Claims;
+            var jsonToken = handler.ReadToken(accessToken) as JwtSecurityToken;
+            var claims = jsonToken.Claims.ToList();
 
-            // 2. Skapa en Identity från claims (inklusive roll)
-            var identity = new ClaimsIdentity(claims, "Cookies"); // Använder "Cookies" som autentiseringstyp
-            var principal = new ClaimsPrincipal(identity);
+            // Lägg till de unika tokensträngarna som claims (essentiellt för skoluppgiften)
+            claims.Add(new Claim("access_token", accessToken));
+            claims.Add(new Claim("refresh_token", refreshToken));
 
-            // Hämta utgångsdatum för token för att sätta giltighetstiden på cookien
+            // 2. Extrahera utgångsdatum ('exp' claim)
             var expirationClaim = claims.FirstOrDefault(c => c.Type == "exp");
-            DateTimeOffset expires = DateTimeOffset.Now.AddMinutes(30); // Fallback
+            DateTimeOffset expirationDate;
 
-            if (expirationClaim != null && long.TryParse(expirationClaim.Value, out long seconds))
+            if (expirationClaim != null && long.TryParse(expirationClaim.Value, out long secondsSinceEpoch))
             {
-                // Konvertera Unix-tidstämpel till DateTimeOffset
-                expires = DateTimeOffset.FromUnixTimeSeconds(seconds);
+                // Konvertera UNIX-tidstämpel till DateTimeOffset
+                expirationDate = DateTimeOffset.FromUnixTimeSeconds(secondsSinceEpoch);
+            }
+            else
+            {
+                // Fallback: Om claim saknas/är fel, sätt en kort giltighet
+                expirationDate = DateTimeOffset.Now.AddMinutes(30);
             }
 
-            // 3. Spara Sessionen (Cookies)
+            // 3. Skapa Identitet, Principal och Authentication Properties
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new ClaimsPrincipal(identity);
+
+            var authProperties = new AuthenticationProperties
+            {
+                IsPersistent = true,
+                // Denna är kritisk: Cookien går ut EXAKT samtidigt som JWT:n.
+                ExpiresUtc = expirationDate
+            };
+
+            // 4. Skapa Cookie-sessionen
             await HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 principal,
-                new AuthenticationProperties
-                {
-                    IsPersistent = false, // Session cookie (raderas vid stängning)
-                    IssuedUtc = DateTimeOffset.UtcNow,
-                    ExpiresUtc = expires // JWT:ns giltighetstid styr cookiens giltighet
-                });
-
-            // 4. (Valfritt men rekommenderat): Spara själva JWT:n i session/cookie
-            // Detta behövs om MVC-klienten ska anropa skyddade API-endpoints
-            HttpContext.Session.SetString("JWToken", jwtToken);
+                authProperties);
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        //{
+        //    // 1. Extrahera claims från JWT
+        //    var handler = new JwtSecurityTokenHandler();
+        //    var jsonToken = handler.ReadToken(jwtToken) as JwtSecurityToken;
+        //    var claims = jsonToken.Claims;
+
+        //    // 2. Skapa en Identity från claims (inklusive roll)
+        //    var identity = new ClaimsIdentity(claims, "Cookies"); // Använder "Cookies" som autentiseringstyp
+        //    var principal = new ClaimsPrincipal(identity);
+
+        //    // Hämta utgångsdatum för token för att sätta giltighetstiden på cookien
+        //    var expirationClaim = claims.FirstOrDefault(c => c.Type == "exp");
+        //    DateTimeOffset expires = DateTimeOffset.Now.AddMinutes(30); // Fallback
+
+        //    if (expirationClaim != null && long.TryParse(expirationClaim.Value, out long seconds))
+        //    {
+        //        // Konvertera Unix-tidstämpel till DateTimeOffset
+        //        expires = DateTimeOffset.FromUnixTimeSeconds(seconds);
+        //    }
+
+        //    // 3. Spara Sessionen (Cookies)
+        //    await HttpContext.SignInAsync(
+        //        CookieAuthenticationDefaults.AuthenticationScheme,
+        //        principal,
+        //        new AuthenticationProperties
+        //        {
+        //            IsPersistent = false, // Session cookie (raderas vid stängning)
+        //            IssuedUtc = DateTimeOffset.UtcNow,
+        //            ExpiresUtc = expires // JWT:ns giltighetstid styr cookiens giltighet
+        //        });
+
+        //    // 4. (Valfritt men rekommenderat): Spara själva JWT:n i session/cookie
+        //    // Detta behövs om MVC-klienten ska anropa skyddade API-endpoints
+        //    HttpContext.Session.SetString("JWToken", jwtToken);
+        //}
     }
 }

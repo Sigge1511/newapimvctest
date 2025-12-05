@@ -28,6 +28,14 @@ builder.Services.AddIdentity<ApplicationUserDto, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Denna rad instruerar serialiseraren att INTE använda camelCase
+        options.JsonSerializerOptions.PropertyNamingPolicy = null;
+    });
+
+
 //**************    MAPPER  **********************************************************************
 builder.Services.AddAutoMapper(typeof(MappingProfile)); 
 //mappar users vid inlogg och registrering
