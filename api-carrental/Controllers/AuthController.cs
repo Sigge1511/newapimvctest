@@ -81,24 +81,20 @@ namespace api_carrental.Controllers
                 //returnUrl ??= Url.Content("~/");
                 if (ModelState.IsValid)
                 {
-                    // 1. HÄMTA ANVÄNDAREN (ApplicationUserDto som Identity-typ)
-                    // Hitta den befintliga användaren i DB baserat på e-post/användarnamn
+                    // Hitta user i db
                     var user = await _userManager.FindByEmailAsync(loginusermodel.Email);
-                    // OBS: Om du använder Username istället för Email, byt till FindByNameAsync
 
-                    // 2. VALIDERAR
                     if (user != null)
                     {
-                        // Validera lösenordet mot den HÄMTADE användaren
+                        // Kolla lösenordet
                         var passwordIsValid = await _userManager.CheckPasswordAsync(user, loginusermodel.Password);
 
                         if (passwordIsValid)
                         {
-                            // 3. SKAPA JWT
+                            // SKAPA JWT
                             _logger.LogInformation($"User {user.Email} logged in.");
                             var tokenpair = await CreateAccessToken(user);
 
-                            // Mappa tillbaka till DTO för ren respons om nödvändigt, eller returnera user
                             return Ok(tokenpair);
                         }
                         else
@@ -118,13 +114,23 @@ namespace api_carrental.Controllers
 
         private async Task<TokenCollection> CreateAccessToken(ApplicationUserDto appUserDto)
         {
+            // Steg A: Hämta den riktiga ApplicationUser entiteten FÖR DB-OPERATIONER
+            var currentAppUser = await _userManager.FindByEmailAsync(appUserDto.Email);
+
+            if (currentAppUser == null)
+            {
+                throw new ApplicationException("Something went wrong.");
+            }
+
             try
             {
-                // Hämta roller
-                var roles = await _userManager.GetRolesAsync(appUserDto);
-
+                var roles = await _userManager.GetRolesAsync(currentAppUser);
                 // Skapa claims och lägg i en lista
-                var claims = new List<Claim>();
+                var claims = new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, currentAppUser.Email!), // Email som Name Claim
+                    new Claim(JwtRegisteredClaimNames.Sub, currentAppUser.Id)
+                };
                 foreach (var role in roles)
                 {
                     claims.Add(new Claim(ClaimTypes.Role, role));
@@ -132,50 +138,145 @@ namespace api_carrental.Controllers
 
                 // Hämta min key
                 var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
-                // Skapa credentials - vad är detta?
+                // Skapa credentials
                 var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
-                //Skapa sen ny JWT
-                var token = new JwtSecurityToken(
+                // Skapa sen ny JWT (Access Token)
+                var accsessToken = new JwtSecurityToken(
                     issuer: _jwtSettings.Issuer,
                     audience: _jwtSettings.Audience,
                     claims: claims,
-                    expires: DateTime.Now.AddMinutes(_jwtSettings.AccessTokenExpInMinutes),
+                    expires: DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpInMinutes),
                     signingCredentials: credentials);
 
-                // Gör om token till sträng
-                // för att skicka med json sen
-                var tokenHandler = new JwtSecurityTokenHandler(); //Skapa omvandlare
-                var accessTokenString = tokenHandler.WriteToken(token); // Gör om till textsträng
+                // Gör om accsessToken till sträng
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var accessTokenString = tokenHandler.WriteToken(accsessToken);
+
+                // 1. Skapa Refresh Token (RT) som en JWT via din metod
+                var refreshTokenJwt = await CreateRefreshToken(currentAppUser); // Använder currentAppUser
+                var refreshTokenString = tokenHandler.WriteToken(refreshTokenJwt);
+
+                // Hämta utgångsdatumet från den skapade RT:n
+                var refreshTokenExpiryTime = refreshTokenJwt.ValidTo;
+
+                // 2. Steg 3: Spara RT i databasen (Initial Lagring)
+                currentAppUser.RefreshTokenValue = refreshTokenString; // Sparar hela RT JWT strängen
+                currentAppUser.RefreshTokenExpiryTime = refreshTokenExpiryTime;
+
+                var updateResult = await _userManager.UpdateAsync(currentAppUser);
+                if (!updateResult.Succeeded)
+                {
+                    throw new ApplicationException("Something went wrong. Could not update user.");
+                }
 
                 var tokenPair = new TokenCollection
                 {
-                    AccessToken = accessTokenString, 
-                    RefreshToken = tokenHandler.WriteToken(await CreateRefreshToken(token)) 
-                    // Gör även RT till sträng
+                    AccessToken = accessTokenString,
+                    RefreshToken = refreshTokenString,
                 };
+
                 return tokenPair;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "An error occurred while creating access token.");
                 var emptyTokenPair = new TokenCollection();
                 return emptyTokenPair;
             }
         }
 
-        private async Task<JwtSecurityToken> CreateRefreshToken(JwtSecurityToken refreshToken)
+        private async Task<JwtSecurityToken> CreateRefreshToken(ApplicationUserDto applicationUserDto)
         {
-            
+            // Vi lägger bara till de claims som behövs för att identifiera användaren
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, applicationUserDto.Email!), 
+                //Behövs för CheckRefreshToken
+                new Claim(JwtRegisteredClaimNames.Sub, applicationUserDto.Id)
+            };
+
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
             var token = new JwtSecurityToken(
                 issuer: _jwtSettings.Issuer,
-                audience: _jwtSettings.Audience,                
-                expires: DateTime.Now.AddMinutes(_jwtSettings.RefreshTokenExpInHours),
+                audience: _jwtSettings.Audience,
+                claims: claims,
+                expires: DateTime.UtcNow.AddHours(_jwtSettings.RefreshTokenExpInHours), 
                 signingCredentials: credentials);
-            // ... returnera token
 
             return token;
+        }
+
+        public async Task<TokenCollection> CheckRefreshToken(string refreshToken)
+        {
+            // Förbered handler och variabler
+            var tokenHandler = new JwtSecurityTokenHandler();
+            SecurityToken validatedToken;
+            ClaimsPrincipal principal;
+
+            try
+            {
+                // Kolla om accsessToken är giltig
+                principal = tokenHandler.ValidateToken(refreshToken, new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = _jwtSettings.Issuer,
+                    ValidAudience = _jwtSettings.Audience,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey)),
+                    ClockSkew = TimeSpan.Zero
+                }, out validatedToken);
+            }
+            catch (SecurityTokenException ex)
+            {
+                // Om det inte går bra svarar den med unauth.
+                throw new UnauthorizedAccessException("You have been logged out.", ex);
+            }
+
+            try
+            {
+                var userEmailClaim = principal.Identity?.Name;
+                if (string.IsNullOrEmpty(userEmailClaim))
+                {
+                    throw new UnauthorizedAccessException("User info missing. You have been logged out.");
+                }
+
+                // Kolla user i db
+                var appUserDto = await _userManager.FindByEmailAsync(userEmailClaim);
+                if (appUserDto == null)
+                {
+                    throw new UnauthorizedAccessException("Something went wrong.");
+                }
+
+                // Kolla RT i db, om det går fel svara med unauth.
+                //annars skapa nya tokens
+                if (appUserDto.RefreshTokenValue != refreshToken || appUserDto.RefreshTokenExpiryTime <= DateTime.UtcNow)
+                {
+                    _logger.LogWarning($"Invalid or expired refresh token for user {appUserDto.Email}.");
+                    throw new UnauthorizedAccessException("You have been logged out." +
+                        "");
+                }
+                TokenCollection newTokenPair = await CreateAccessToken(appUserDto);
+                return newTokenPair;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred.");
+                var emptyTokenPair = new TokenCollection();
+                return emptyTokenPair;
+            }
+        }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            await _signInManager.SignOutAsync();
+            _logger.LogInformation("User logged out.");
+            return Ok(new { message = "Logged out successfully" });
         }
     }
 }

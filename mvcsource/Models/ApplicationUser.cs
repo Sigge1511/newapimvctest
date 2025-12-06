@@ -10,9 +10,15 @@ namespace assignment_mvc_carrental.Models
         public string? Address { get; set; } = "";
         public string? City { get; set; } = "";
 
-
         [Required]
         public override string Email { get; set; }
+
+
+        // Fält för Refresh Token
+        public string RefreshTokenValue { get; set; }
+
+        // Fält för utgångsdatum för Refresh Token
+        public DateTime RefreshTokenExpiryTime { get; set; }
 
 
         public ICollection<Booking>? Bookings { get; set; } // Håller koll på alla bokningar som användaren har gjort
