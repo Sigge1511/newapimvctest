@@ -17,16 +17,16 @@ namespace assignment_mvc_carrental.Controllers
 {
     public class BookingVMController : Controller
     {
-        private readonly HttpClient _httpClient;
+        private readonly IHttpClientFactory _clientfactory;
         private readonly IMapper _mapper;
 
         //För göra risken mindre för strul med deserialisering
         private readonly JsonSerializerOptions _jsonOptions = 
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
-        public BookingVMController(IMapper mapper, HttpClient httpClient)
+        public BookingVMController(IMapper mapper, IHttpClientFactory httpClientFactory)
         {
-            _httpClient = httpClient;
+            _clientfactory = httpClientFactory;
             _mapper = mapper;
         }
         // 1. Förbered klienten för auktorisering
@@ -51,7 +51,8 @@ namespace assignment_mvc_carrental.Controllers
 
             // Anropar API:ets [HttpGet] på api/BookingDt
             // Använder GetFromJsonAsync för snabb deserialisering
-            var response = await _httpClient.GetAsync("BookingDt");
+            var _client = _clientfactory.CreateClient("CarRentalApi");
+            var response = await _client.GetAsync("BookingDt");
 
             if (response.IsSuccessStatusCode)
             {
@@ -81,7 +82,8 @@ namespace assignment_mvc_carrental.Controllers
                 List<Vehicle> vehiclesList = null;
 
                 // Anropar API GET för fordon. Rutt: "VehicleDt"
-                var response = await _httpClient.GetAsync("VehicleDt/GetIndexAsync");
+                var _client = _clientfactory.CreateClient("CarRentalApi");
+                var response = await _client.GetAsync("VehicleDt/GetIndexAsync");
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -151,7 +153,8 @@ namespace assignment_mvc_carrental.Controllers
             // --- 3. Skicka till API:et och hantera fel/success ---
             try
             {
-                var response = await _httpClient.PostAsJsonAsync("BookingDt", bookingToSend);
+                var _client = _clientfactory.CreateClient("CarRentalApi");
+                var response = await _client.PostAsJsonAsync("BookingDt", bookingToSend);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -184,7 +187,8 @@ namespace assignment_mvc_carrental.Controllers
             ModelState.AddModelError(string.Empty, errorMessage);
 
             // Hämta fordonslistan från API:et igen för att fylla ViewBags
-            List<Vehicle>? vehiclesList = await _httpClient.GetFromJsonAsync<List<Vehicle>>("VehicleDt");
+            var _client = _clientfactory.CreateClient("CarRentalApi");
+            List<Vehicle>? vehiclesList = await _client.GetFromJsonAsync<List<Vehicle>>("VehicleDt");
 
             if (vehiclesList != null)
             {
@@ -216,14 +220,14 @@ namespace assignment_mvc_carrental.Controllers
             {
                 List<Vehicle> vehiclesList = null;
                 List<ApplicationUser> customersList = null;
-
-                var vehiclesResponse = await _httpClient.GetAsync("VehicleDt/GetIndexAsync");
+                var _client = _clientfactory.CreateClient("CarRentalApi");
+                var vehiclesResponse = await _client.GetAsync("VehicleDt/GetIndexAsync");
                 if (vehiclesResponse.IsSuccessStatusCode)
                 {
                     vehiclesList = await vehiclesResponse.Content.ReadFromJsonAsync<List<Vehicle>>();
                 }
                 
-                var customersResponse = await _httpClient.GetAsync("AppUserDt/GetCustomersIndexAsync");
+                var customersResponse = await _client.GetAsync("AppUserDt/GetCustomersIndexAsync");
                 if (customersResponse.IsSuccessStatusCode)
                 {
                     customersList = await customersResponse.Content.ReadFromJsonAsync<List<ApplicationUser>>();
@@ -274,8 +278,9 @@ namespace assignment_mvc_carrental.Controllers
                 ModelState.AddModelError(string.Empty, "Please correct the input errors.");
                 //Hämta fordon och kunder igen för ViewBags
                 //för att kunna stanna i bokningsvyn och inte bli utkastad till index igen
-                List<Vehicle> vehiclesList = await _httpClient.GetFromJsonAsync<List<Vehicle>>("VehicleDt/GetIndexAsync");
-                List<ApplicationUser> customersList = await _httpClient.GetFromJsonAsync<List<ApplicationUser>>("AppUserDt/GetCustomersIndexAsync");
+                var _client = _clientfactory.CreateClient("CarRentalApi");
+                List<Vehicle> vehiclesList = await _client.GetFromJsonAsync<List<Vehicle>>("VehicleDt/GetIndexAsync");
+                List<ApplicationUser> customersList = await _client.GetFromJsonAsync<List<ApplicationUser>>("AppUserDt/GetCustomersIndexAsync");
 
                 if (vehiclesList != null)
                 {
@@ -292,7 +297,8 @@ namespace assignment_mvc_carrental.Controllers
             var bookingToSend = _mapper.Map<Booking>(inputBookingVM);
             try
             {
-                var response = await _httpClient.PostAsJsonAsync("BookingDt", bookingToSend);
+                var _client = _clientfactory.CreateClient("CarRentalApi");
+                var response = await _client.PostAsJsonAsync("BookingDt", bookingToSend);
                 if (response.IsSuccessStatusCode)
                 {
                     TempData["SuccessMessage"] = "Booking successfully created.";
@@ -320,7 +326,8 @@ namespace assignment_mvc_carrental.Controllers
             try
             {
                 Booking booking = null;
-                var bookingResponse = await _httpClient.GetAsync($"BookingDt/{id.Value}");
+                var _client = _clientfactory.CreateClient("CarRentalApi");
+                var bookingResponse = await _client.GetAsync($"BookingDt/{id.Value}");
                 if (bookingResponse.IsSuccessStatusCode)
                 {
                     booking = await bookingResponse.Content.ReadFromJsonAsync<Booking>();
@@ -334,7 +341,7 @@ namespace assignment_mvc_carrental.Controllers
 
 
                 List<Vehicle> vehiclesList = null;
-                var vehiclesResponse = await _httpClient.GetAsync("VehicleDt/GetIndexAsync");
+                var vehiclesResponse = await _client.GetAsync("VehicleDt/GetIndexAsync");
 
                 if (vehiclesResponse.IsSuccessStatusCode)
                 {
@@ -368,6 +375,7 @@ namespace assignment_mvc_carrental.Controllers
         {
             try
             {
+                var _client = _clientfactory.CreateClient("CarRentalApi");
                 if (id != bookingVM.Id)
                 {
                     TempData["ErrorMessage"] = "Booking mismatch.";
@@ -389,7 +397,7 @@ namespace assignment_mvc_carrental.Controllers
                     ModelState.AddModelError(string.Empty, "Please correct the input errors.");
 
                     // Assign to the already declared nullable variable
-                    vehiclesList = await _httpClient.GetFromJsonAsync<List<Vehicle>>("VehicleDt/GetIndexAsync");
+                    vehiclesList = await _client.GetFromJsonAsync<List<Vehicle>>("VehicleDt/GetIndexAsync");
 
                     if (vehiclesList != null)
                     {
@@ -403,7 +411,7 @@ namespace assignment_mvc_carrental.Controllers
 
                 var bookingToSend = _mapper.Map<Booking>(bookingVM);
             
-                var response = await _httpClient.PutAsJsonAsync($"BookingDt/{id}", bookingToSend);
+                var response = await _client.PutAsJsonAsync($"BookingDt/{id}", bookingToSend);
                 if (response.IsSuccessStatusCode)
                 {
                     TempData["SuccessMessage"] = "Booking successfully updated!";
@@ -423,7 +431,7 @@ namespace assignment_mvc_carrental.Controllers
                 TempData["ErrorMessage"] = "Update failed. The vehicle might be unavailable during the new dates.";
 
                 // Ladda om ViewBags igen vid API-fel:
-                vehiclesList = await _httpClient.GetFromJsonAsync<List<Vehicle>>("VehicleDt/GetIndexAsync");
+                vehiclesList = await _client.GetFromJsonAsync<List<Vehicle>>("VehicleDt/GetIndexAsync");
                 if (vehiclesList != null)
                 {
                     ViewBag.VehicleList = _mapper.Map<List<VehicleViewModel>>(vehiclesList);
@@ -450,7 +458,8 @@ namespace assignment_mvc_carrental.Controllers
             try
             {
                 Booking booking = null;
-                var bookingResponse = await _httpClient.GetAsync($"BookingDt/{id.Value}");
+                var _client = _clientfactory.CreateClient("CarRentalApi");
+                var bookingResponse = await _client.GetAsync($"BookingDt/{id.Value}");
                 if (bookingResponse.IsSuccessStatusCode)
                 {
                     booking = await bookingResponse.Content.ReadFromJsonAsync<Booking>();
@@ -479,7 +488,8 @@ namespace assignment_mvc_carrental.Controllers
         {            
             try
             {
-                var response = await _httpClient.DeleteAsync($"BookingDt/{id}");
+                var _client = _clientfactory.CreateClient("CarRentalApi");
+                var response = await _client.DeleteAsync($"BookingDt/{id}");
 
                 if (response.IsSuccessStatusCode)
                 {

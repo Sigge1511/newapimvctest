@@ -19,15 +19,15 @@ namespace assignment_mvc_carrental.Controllers
     public class ApplicationUserVMController : Controller
     {
         private readonly IMapper _mapper;
-        private readonly HttpClient _httpClient; 
+        private readonly IHttpClientFactory _clientfactory;
 
         //Kan vara bra för ev jsonstrul
         private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
-        public ApplicationUserVMController(IMapper mapper, HttpClient httpClient) 
+        public ApplicationUserVMController(IMapper mapper, IHttpClientFactory httpClientFactory) 
         {
             _mapper = mapper;
-            _httpClient = httpClient; 
+            _clientfactory = httpClientFactory; 
         }
 
         //***********************************************************************************************************************
@@ -59,7 +59,8 @@ namespace assignment_mvc_carrental.Controllers
 
                 // 3. Ropa på API:et
                 // OBS: "api/user/create" måste matchas mot din endpoint i API:et.
-                var response = await _httpClient.PostAsJsonAsync("api/AppUserDt", newCustomerForApi);
+                var _client = _clientfactory.CreateClient("CarRentalApi");
+                var response = await _client.PostAsJsonAsync("api/AppUserDt", newCustomerForApi);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -109,7 +110,9 @@ namespace assignment_mvc_carrental.Controllers
                 var newCustomerForApi = _mapper.Map<ApplicationUser>(userInput);
 
                 // 2. Ropa på API:et (Samma endpoint som Create)                
-                var response = await _httpClient.PostAsJsonAsync("api/AppUserDt", newCustomerForApi);
+                var _client = _clientfactory.CreateClient("CarRentalApi");
+
+                var response = await _client.PostAsJsonAsync("api/AppUserDt", newCustomerForApi);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -151,7 +154,9 @@ namespace assignment_mvc_carrental.Controllers
             try
             {
                 // 1. Hämta data, mvc-Model matchar Dto hos api.
-                var apiUserList = await _httpClient.GetFromJsonAsync<List<ApplicationUser>>("api/AppUserDt");
+                var _client = _clientfactory.CreateClient("CarRentalApi");
+
+                var apiUserList = await _client.GetFromJsonAsync<List<ApplicationUser>>("api/AppUserDt");
 
                 if (apiUserList == null)
                 {
@@ -184,7 +189,8 @@ namespace assignment_mvc_carrental.Controllers
             try
             {
                 var apiUrl = $"api/AppUserDt/{id}";
-                var user = await _httpClient.GetFromJsonAsync<ApplicationUser>(apiUrl);
+                var _client = _clientfactory.CreateClient("CarRentalApi");
+                var user = await _client.GetFromJsonAsync<ApplicationUser>(apiUrl);
                 if (user == null)
                 {
                     return NotFound();
@@ -235,7 +241,8 @@ namespace assignment_mvc_carrental.Controllers
                 var url = $"api/AppUserDt/{CustomerVM.Id}";
 
                 // Skicka CustomerVM till min nya apiUrl
-                var response = await _httpClient.PutAsJsonAsync(url, CustomerVM);
+                var _client = _clientfactory.CreateClient("CarRentalApi");
+                var response = await _client.PutAsJsonAsync(url, CustomerVM);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -271,7 +278,8 @@ namespace assignment_mvc_carrental.Controllers
                 var apiUrl = $"api/AppUserDt/{id}";
 
                 // Hämta data som din ApplicationUser-modell (som matchar API:ets DTO)
-                var user = await _httpClient.GetFromJsonAsync<ApplicationUser>(apiUrl);
+                var _client = _clientfactory.CreateClient("CarRentalApi");
+                var user = await _client.GetFromJsonAsync<ApplicationUser>(apiUrl);
 
                 if (user == null)
                 {
@@ -314,7 +322,8 @@ namespace assignment_mvc_carrental.Controllers
                 var apiUrl = $"api/AppUserDt/{id}";
 
                 // Skickar en HTTP DELETE-förfrågan till API:et
-                var response = await _httpClient.DeleteAsync(apiUrl);
+                var _client = _clientfactory.CreateClient("CarRentalApi");
+                var response = await _client.DeleteAsync(apiUrl);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -355,7 +364,8 @@ namespace assignment_mvc_carrental.Controllers
                 var apiUrl = $"api/AppUserDt/bookings/{userId}";
 
                 // HttpClient anropar nu den nya metoden GetUserWithBookings i API:et
-                var user = await _httpClient.GetFromJsonAsync<ApplicationUser>(apiUrl);
+                var _client = _clientfactory.CreateClient("CarRentalApi");
+                var user = await _client.GetFromJsonAsync<ApplicationUser>(apiUrl);
 
                 if (user == null)
                 {
@@ -427,7 +437,8 @@ namespace assignment_mvc_carrental.Controllers
             try
             {                
                 var apiUrl = $"api/AppUserDt/{id}";
-                var user = await _httpClient.GetFromJsonAsync<ApplicationUser>(apiUrl);
+                var _client = _clientfactory.CreateClient("CarRentalApi");
+                var user = await _client.GetFromJsonAsync<ApplicationUser>(apiUrl);
                 if (user == null)
                 {
                     // API:et kunde inte hitta användaren
