@@ -4,10 +4,8 @@ using api_carrental.Dtos;
 using api_carrental.Repos;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -45,7 +43,6 @@ namespace api_carrental.Controllers
             _mapper = mapper;
         }
 //***************************************************************************************************************
-
         [HttpPost("/admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AdminLogin(LoginUserDto userDto)
@@ -72,7 +69,6 @@ namespace api_carrental.Controllers
                 return Problem($"Something went wrong in the", statusCode: 500);
             }
         }
-
         [HttpPost("login")]
         public async Task<IActionResult> UserLoginAsync([FromBody] LoginUserDto loginusermodel)
         {
@@ -112,6 +108,7 @@ namespace api_carrental.Controllers
             return BadRequest("Something went wrong, please try again.");
         }
 
+//*********************** SKAPA TOKENS *****************************************************
         private async Task<TokenCollection> CreateAccessToken(ApplicationUserDto appUserDto)
         {
             // Steg A: Hämta den riktiga ApplicationUser entiteten FÖR DB-OPERATIONER
@@ -185,7 +182,6 @@ namespace api_carrental.Controllers
                 return emptyTokenPair;
             }
         }
-
         private async Task<JwtSecurityToken> CreateRefreshToken(ApplicationUserDto applicationUserDto)
         {
             // Vi lägger bara till de claims som behövs för att identifiera användaren
@@ -209,6 +205,41 @@ namespace api_carrental.Controllers
             return token;
         }
 
+//*********************** EV FÖRNYA TOKENS *****************************************************
+        [HttpPost("refresh")]
+        [AllowAnonymous]
+        public async Task<IActionResult> NeedNewTokens([FromBody] RefreshTokenRequest request)
+        {
+            // Koll av argument
+            if (request == null || string.IsNullOrEmpty(request.RefreshToken))
+            {
+                _logger.LogWarning("Refresh request received without a token.");
+                return BadRequest(new { message = "You've been logged out." });
+            }
+
+            try
+            {
+                // Kollar:
+                // a) Validering av RT 
+                // b) Koll mot db
+                // c) Ny AT/RT 
+                TokenCollection newTokenPair = await CheckRefreshToken(request.RefreshToken);
+                //Svara med nya tokens om det gick bra
+                return Ok(newTokenPair);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                // Annars 401 och logga ut användaren helt.
+                _logger.LogWarning(ex, "Refresh token-validation failed.");
+                return Unauthorized(new { message = "You've been logged out due to inactivity." });
+            }
+            catch (Exception ex)
+            {
+                // 5. Oväntat Serverfel
+                _logger.LogError(ex, "Something went wrong.");
+                return StatusCode(500, new { message = "Something went wrong." });
+            }
+        }
         public async Task<TokenCollection> CheckRefreshToken(string refreshToken)
         {
             // Förbered handler och variabler
@@ -271,12 +302,38 @@ namespace api_carrental.Controllers
             }
         }
 
+        //*********************** LOGGA UT *****************************************************
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
-            await _signInManager.SignOutAsync();
-            _logger.LogInformation("User logged out.");
-            return Ok(new { message = "Logged out successfully" });
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var currentUser = await _userManager.FindByIdAsync(userId);
+                if (currentUser != null)
+                {
+                    // Nolla allt med tokens
+                    currentUser.RefreshTokenValue = null;
+                    currentUser.RefreshTokenExpiryTime = DateTime.Now;
+
+                    var updateResult = await _userManager.UpdateAsync(currentUser);
+
+                    if (!updateResult.Succeeded)
+                    {
+                        _logger.LogError($"Failed to revoke RT for user {currentUser.Email}");
+                        return StatusCode(500, new { message = "Logout failed due to DB error." });
+                    }
+                }
+                await _signInManager.SignOutAsync();
+
+                _logger.LogInformation($"User {userId} successfully logged out and RT revoked.");
+                return Ok(new { message = "Logged out successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred during logout.");
+                return StatusCode(500, new { message = "Something went wrong. Please try again." });
+            }
         }
     }
 }
