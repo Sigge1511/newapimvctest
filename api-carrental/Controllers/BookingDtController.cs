@@ -1,7 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using api_carrental.Dtos;
 using api_carrental.Repos;
-using api_carrental.Dtos;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.ObjectPool;
+using System.Security.Claims;
+using System.Text;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -46,6 +49,7 @@ namespace api_carrental.Controllers
         [Authorize]
         public async Task<ActionResult<BookingDto>> Post([FromBody] BookingDto booking)
         {
+            string currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var vehicle = await _vehicleRepo.GetVehicleByIDAsync(booking.VehicleId);
             if (vehicle == null)
             {
@@ -64,6 +68,8 @@ namespace api_carrental.Controllers
             {
                 return BadRequest("The selected vehicle is already booked during the specified period.");
             }
+
+            booking.ApplicationUserId = currentUserId; // Lägg till ID från token!
             booking.TotalPrice = vehicle.PricePerDay * days;            
             await _bookingRepo.AddBookingAsync(booking);
 
@@ -142,5 +148,6 @@ namespace api_carrental.Controllers
             await _bookingRepo.DeleteBookingAsync(id);
             return NoContent();
         }
+            
     }
 }

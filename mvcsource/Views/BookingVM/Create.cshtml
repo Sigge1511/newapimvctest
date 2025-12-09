@@ -6,30 +6,18 @@
 @model assignment_mvc_carrental.ViewModels.BookingViewModel
 
 @{
-    ViewData["Title"] = "Create Reservation";
+    ViewData["Title"] = "Make a Reservation";
     var vehicles = ViewBag.VehicleList as SelectList;
     var selectedId = ViewBag.SelectedVehicleId as int?;
 
 }
-
-@* @if (!isLoggedIn)
-{
-    <div class="alert alert-warning">
-        In order to make a reservation, you need to be logged in.<br />
-        <br />
-        <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-primary mt-2">Log in</a>
-        <a asp-controller="ApplicationUserVM" asp-action="Register" class="btn btn-secondary mt-2">Register</a>
-    </div>
-} *@
-
-else
-{
-    <h3>Create a new reservation</h3>
+    <h3>Make a new reservation</h3>
     <hr />
 
     <div id="vehicleImageContainer" style="margin:15px 0; max-width: 60%;"></div>
 
-    <form asp-action="Create" method="post">
+    <form asp-controller="BookingVM" asp-action="Create" method="post">
+    @Html.AntiForgeryToken()   @* LÄGG TILL DENNA *@
         <div class="form-group">
             <label for="VehicleId">Select vehicle</label>
             <select id="VehicleId" name="VehicleId" class="form-control" onchange="onVehicleChange()">
@@ -116,5 +104,5 @@ else
             };
         </script>
     }
-}
+
 

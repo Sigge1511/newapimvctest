@@ -52,6 +52,16 @@ namespace assignment_mvc_carrental
                 {
                     options.LoginPath = "/Home/Login"; // Sökväg om användaren inte är autentiserad
                     options.ExpireTimeSpan = TimeSpan.FromHours(1); // Cookie-giltighet (kan overrideas i SignInAsync)
+                    options.Events = new CookieAuthenticationEvents
+                    {
+                        OnRedirectToLogin = context =>
+                        {
+                            // Berättar för kund varför de måste vara
+                            // inloggade för att kunna boka en bil
+                            context.Response.Redirect(context.RedirectUri + "You need to be signed in when making a reservation.");
+                            return Task.CompletedTask;
+                        }
+                    };
                 });
 
             
@@ -70,10 +80,9 @@ namespace assignment_mvc_carrental
                 app.UseHsts();
             }
 
-            
-            app.UseHttpsRedirection();
-            app.UseStaticFiles();
             app.UseRouting();
+            app.UseHttpsRedirection();
+            app.UseStaticFiles();            
             app.UseSession();
             app.UseAuthentication(); // kopplat till inlogg osv
             app.UseAuthorization(); //kollar behörighet

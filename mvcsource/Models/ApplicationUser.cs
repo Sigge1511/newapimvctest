@@ -15,10 +15,10 @@ namespace assignment_mvc_carrental.Models
 
 
         // Fält för Refresh Token
-        public string RefreshTokenValue { get; set; }
+        public string? RefreshTokenValue { get; set; }
 
         // Fält för utgångsdatum för Refresh Token
-        public DateTime RefreshTokenExpiryTime { get; set; }
+        public DateTime? RefreshTokenExpiryTime { get; set; }
 
 
         public ICollection<Booking>? Bookings { get; set; } // Håller koll på alla bokningar som användaren har gjort

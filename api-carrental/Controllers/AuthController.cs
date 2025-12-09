@@ -244,13 +244,13 @@ namespace api_carrental.Controllers
         {
             // Förbered handler och variabler
             var tokenHandler = new JwtSecurityTokenHandler();
-            SecurityToken validatedToken;
             ClaimsPrincipal principal;
 
             try
             {
                 // Kolla om accsessToken är giltig
-                principal = tokenHandler.ValidateToken(refreshToken, new TokenValidationParameters
+                principal = tokenHandler.ValidateToken(refreshToken, 
+                    new TokenValidationParameters
                 {
                     ValidateIssuer = true,
                     ValidateAudience = true,
@@ -260,7 +260,8 @@ namespace api_carrental.Controllers
                     ValidAudience = _jwtSettings.Audience,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey)),
                     ClockSkew = TimeSpan.Zero
-                }, out validatedToken);
+                }, 
+                    out SecurityToken validatedToken);
             }
             catch (SecurityTokenException ex)
             {

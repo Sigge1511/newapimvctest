@@ -1,15 +1,10 @@
-﻿using assignment_mvc_carrental.Data;
-using assignment_mvc_carrental.Models;
+﻿using assignment_mvc_carrental.Models;
 using assignment_mvc_carrental.ViewModels;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.Json;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
 using System.Net;
-using System.Net.Http;
+using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using System.Text.Json;
 
@@ -29,21 +24,8 @@ namespace assignment_mvc_carrental.Controllers
             _clientfactory = httpClientFactory;
             _mapper = mapper;
         }
-        // 1. Förbered klienten för auktorisering
-        // Vi måste skicka med JWT/Bearer-token som MVC-appen fick vid inloggningen
-        // i Authorization-headern till API:et.
-
-        // Observera: Denna del (hämta token) är beroende av hur du hanterar 
-        // inloggningen i MVC-appen (t.ex. OIDC, Identity Server, eller lagrad token).
-        // Vi antar att du har en metod för att hämta token för den inloggade användaren.
-        // *****************************************************************
-
-        // Exempel:
-        //string token = HttpContext.GetTokenAsync("access_token").Result;
-        //_httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        //***********************************************************************************************************************
-
-        // GET: BookingVM
+  //***********************************************************************************************************************
+          // GET: BookingVM
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Index()
         {            
@@ -78,18 +60,18 @@ namespace assignment_mvc_carrental.Controllers
             try 
             {
                 // Deklarera det som skickas till vyn (BookingViewModel)
-                BookingViewModel viewModel = new BookingViewModel { VehicleId = vehicleId ?? 0 }; 
-                List<Vehicle> vehiclesList = null;
+                BookingViewModel? viewModel = new BookingViewModel { VehicleId = vehicleId ?? 0 }; 
+                List<Vehicle>? vehiclesList = null;
 
                 // Anropar API GET för fordon. Rutt: "VehicleDt"
                 var _client = _clientfactory.CreateClient("CarRentalApi");
-                var response = await _client.GetAsync("VehicleDt/GetIndexAsync");
+                var response = await _client.GetAsync("api/VehicleDt");
 
                 if (response.IsSuccessStatusCode)
                 {
                     vehiclesList = await response.Content.ReadFromJsonAsync<List<Vehicle>>(_jsonOptions);
 
-                    if (vehiclesList != null && vehiclesList.Any())
+                    if (vehiclesList != null && vehiclesList.Count > 0)
                     {
                         // Mappa och returnera vyn 
                         var vehicleVMList = _mapper.Map<List<VehicleViewModel>>(vehiclesList);
@@ -99,7 +81,7 @@ namespace assignment_mvc_carrental.Controllers
                     }
                 }         
                 
-                if(vehiclesList == null || !vehiclesList.Any())
+                if(vehiclesList == null || vehiclesList.Count == 0)
                 {
                     TempData["ErrorMessage"] = "Could not get the right vehicle.";
                     return RedirectToAction("Index", "Vehicle");
@@ -116,45 +98,50 @@ namespace assignment_mvc_carrental.Controllers
 
         // POST: BookingVM/Create
         [Authorize]
+        [ActionName("Create")]
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(BookingViewModel inputBookingVM)
+        public async Task<IActionResult> CreateReservation(BookingViewModel inputBookingVM)
         {
             var today = DateOnly.FromDateTime(DateTime.Today);
             if (inputBookingVM.StartDate < today)
             {
-                ModelState.AddModelError(nameof(inputBookingVM.StartDate), "Start date cannot be in the past.");
+                ModelState.AddModelError(nameof(inputBookingVM.StartDate), 
+                    "Start date cannot be in the past.");
             }
             var days = (inputBookingVM.EndDate.DayNumber - inputBookingVM.StartDate.DayNumber) + 1;
             if (days < 1)
             {
-                ModelState.AddModelError(nameof(inputBookingVM.EndDate), "End date must be the same or after the start date.");
+                ModelState.AddModelError(nameof(inputBookingVM.EndDate), 
+                    "End date must be the same or after the start date.");
             }
-
             if (!ModelState.IsValid)
             {
                 // Vi måste hämta fordonslistan från API:et igen för att fylla ViewBags.
-                return await HandleFailedPost(inputBookingVM, "Something went wrong. Please check your input.");
-            }
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null)
-            {
-                TempData["ErrorMessage"] = "Unauthorized: User ID not found.";
-                return Unauthorized();
-            }
+                return await HandleFailedPost(inputBookingVM, 
+                    "Something went wrong. Please check your input.");
+            }            
 
-            // Mappa från ViewModel (från formulär) till API-kontraktet (Booking)
-            var bookingToSend = _mapper.Map<Booking>(inputBookingVM);
-
-            // Sätt de viktiga värdena: Prisberäkning (TotalPrice) görs nu på API:et!
-            bookingToSend.ApplicationUserId = userId;
-            // bookingToSend.TotalPrice behöver inte sättas här, API:et beräknar.
-
-            // --- 3. Skicka till API:et och hantera fel/success ---
             try
             {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userId == null)
+                {
+                    TempData["ErrorMessage"] = "Unauthorized: User ID not found.";
+                    return Unauthorized();
+                }
+
+                // Mappa från ViewModel till modellklass
+                var bookingToSend = _mapper.Map<Booking>(inputBookingVM);
+                bookingToSend.ApplicationUserId = userId;
+
+                var accessToken = FetchAccessTokenInfo();
                 var _client = _clientfactory.CreateClient("CarRentalApi");
-                var response = await _client.PostAsJsonAsync("BookingDt", bookingToSend);
+                //Se till att skicka med authinfo i token
+                _client.DefaultRequestHeaders.Authorization =
+                        new System.Net.Http.Headers
+                        .AuthenticationHeaderValue("Bearer", accessToken); 
+                
+                var response = await _client.PostAsJsonAsync("api/BookingDt", bookingToSend);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -188,7 +175,7 @@ namespace assignment_mvc_carrental.Controllers
 
             // Hämta fordonslistan från API:et igen för att fylla ViewBags
             var _client = _clientfactory.CreateClient("CarRentalApi");
-            List<Vehicle>? vehiclesList = await _client.GetFromJsonAsync<List<Vehicle>>("VehicleDt");
+            List<Vehicle>? vehiclesList = await _client.GetFromJsonAsync<List<Vehicle>>("api/VehicleDt");
 
             if (vehiclesList != null)
             {
@@ -218,10 +205,10 @@ namespace assignment_mvc_carrental.Controllers
 
             try
             {
-                List<Vehicle> vehiclesList = null;
-                List<ApplicationUser> customersList = null;
+                List<Vehicle>? vehiclesList = null;
+                List<ApplicationUser>? customersList = null;
                 var _client = _clientfactory.CreateClient("CarRentalApi");
-                var vehiclesResponse = await _client.GetAsync("VehicleDt/GetIndexAsync");
+                var vehiclesResponse = await _client.GetAsync("api/VehicleDt/GetIndexAsync");
                 if (vehiclesResponse.IsSuccessStatusCode)
                 {
                     vehiclesList = await vehiclesResponse.Content.ReadFromJsonAsync<List<Vehicle>>();
@@ -234,7 +221,7 @@ namespace assignment_mvc_carrental.Controllers
                 }
 
                 // Kolla att båda listorna har fyllts
-                if (vehiclesList == null || !vehiclesList.Any() || customersList == null || !customersList.Any())
+                if (vehiclesList == null || vehiclesList.Count==0 || customersList == null)
                 {
                     TempData["ErrorMessage"] = "Could not fetch required info. Please try again.";
                     // Omdirigera till fordonens index?
@@ -266,13 +253,11 @@ namespace assignment_mvc_carrental.Controllers
             {
                 ModelState.AddModelError(nameof(inputBookingVM.StartDate), "Start date cannot be in the past.");
             }
-
             var days = (inputBookingVM.EndDate.DayNumber - inputBookingVM.StartDate.DayNumber) + 1;
             if (days < 1)
             {
                 ModelState.AddModelError(nameof(inputBookingVM.EndDate), "End date must be the same as or after the start date.");
             }
-
             if (!ModelState.IsValid)
             {
                 ModelState.AddModelError(string.Empty, "Please correct the input errors.");
@@ -294,11 +279,18 @@ namespace assignment_mvc_carrental.Controllers
                 // Stanna i vyn för att visa felen
                 return View("AdminCreate", inputBookingVM);
             }
+            
+
             var bookingToSend = _mapper.Map<Booking>(inputBookingVM);
             try
             {
+                var accessToken = FetchAccessTokenInfo();
                 var _client = _clientfactory.CreateClient("CarRentalApi");
-                var response = await _client.PostAsJsonAsync("BookingDt", bookingToSend);
+                _client.DefaultRequestHeaders.Authorization =
+                        new System.Net.Http.Headers
+                        .AuthenticationHeaderValue("Bearer", accessToken);
+
+                var response = await _client.PostAsJsonAsync("api/BookingDt", bookingToSend);
                 if (response.IsSuccessStatusCode)
                 {
                     TempData["SuccessMessage"] = "Booking successfully created.";
@@ -347,7 +339,7 @@ namespace assignment_mvc_carrental.Controllers
                 {
                     vehiclesList = await vehiclesResponse.Content.ReadFromJsonAsync<List<Vehicle>>();
                 }
-                if (vehiclesList == null || !vehiclesList.Any())
+                if (vehiclesList == null || vehiclesList.Count == 0)
                 {
                     TempData["ErrorMessage"] = "Could not retrieve the list of available vehicles.";
                     return RedirectToAction(nameof(Index)); 
@@ -446,7 +438,7 @@ namespace assignment_mvc_carrental.Controllers
             }
         }
 
-        //***********************************************************************************************************************
+//***********************************************************************************************************************
 
         // GET: BookingVM/Delete/5
         [Authorize]
@@ -484,7 +476,7 @@ namespace assignment_mvc_carrental.Controllers
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         [Authorize]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        public async Task<RedirectToActionResult> DeleteConfirmed(int id)
         {            
             try
             {
@@ -499,21 +491,29 @@ namespace assignment_mvc_carrental.Controllers
                 else if (response.StatusCode == HttpStatusCode.NotFound)
                 {
                     TempData["ErrorMessage"] = "The reservation was not found.";
-                    return RedirectToAction(nameof(Delete), new { id = id });
+                    return RedirectToAction(nameof(Delete), new { id });
                 }
                 else
                 {
                     string apiErrorContent = await response.Content.ReadAsStringAsync();
                     TempData["ErrorMessage"] = $"Could not delete reservation. " +
                         $"Server response: {response.StatusCode}. Details: {apiErrorContent}";
-                    return RedirectToAction(nameof(Delete), new { id = id });
+                    return RedirectToAction(nameof(Delete), new { id });
                 }
             }
             catch (Exception)
             {
                 TempData["ErrorMessage"] = "A critical error occurred while communicating with the server.";
             }
-            return RedirectToAction(nameof(Delete), new { id = id });
+            return RedirectToAction(nameof(Delete), new { id });
+        }
+
+//***************************************************************************************
+        //Hjälpmetod för att hämta & skicka med tokeninfo
+        internal string FetchAccessTokenInfo()
+        {
+            var accessToken = HttpContext.Session.GetString("AccessToken");
+            return (accessToken);
         }
     }
 }

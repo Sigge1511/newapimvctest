@@ -7,6 +7,13 @@
 
 <h1>@ViewData["Title"]</h1>
 <div class="row">
+    @if (TempData["AuthMessage"] != null)
+    {
+        <div class="alert alert-info" role="alert">
+            <strong>Observera:</strong> @TempData["AuthMessage"]
+        </div>
+    }
+
     <div class="col-md-4">
         <section>
             <form asp-controller="Home" asp-action="LoginPost" id="account" method="post">

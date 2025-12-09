@@ -74,7 +74,8 @@ namespace assignment_mvc_carrental.Controllers
             {
                 HttpClient client = _clientFactory.CreateClient("CarRentalApi");
 
-                var response = await client.GetAsync($"api/VehicleDt/{id}");                if (!response.IsSuccessStatusCode)
+                var response = await client.GetAsync($"api/VehicleDt/{id}");                
+                if (!response.IsSuccessStatusCode)
                 {
                     if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return NotFound();
                     TempData["ErrorMessage"] = "Could not find vehicle.";
