@@ -1,12 +1,13 @@
 ﻿using api_carrental.Data;
 using api_carrental.Dtos;
 using api_carrental.Repos;
+using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Rewrite;
 using Microsoft.EntityFrameworkCore;
 
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace api_carrental.Controllers
 {
@@ -19,18 +20,21 @@ namespace api_carrental.Controllers
         private readonly UserManager<ApplicationUserDto> _userManager;
         private readonly SignInManager<ApplicationUserDto> _signInManager;
         private readonly IBookingRepo _bookingRepo;
+        private readonly IMapper _mapper;
 
         public AppUserDtController(ApplicationDbContext applicationDbContext, 
                                     IApplicationUser applicationUser, 
                                     UserManager<ApplicationUserDto> userManager, 
                                     SignInManager<ApplicationUserDto> signInManager,
-                                    IBookingRepo bookingRepo)
+                                    IBookingRepo bookingRepo,
+                                    IMapper mapper)
         {
             _applicationDbContext = applicationDbContext;
             _applicationUser = applicationUser;
             _userManager = userManager;
             _signInManager = signInManager;
             _bookingRepo = bookingRepo;
+            _mapper = mapper;
         }
 //***************************************************************************************************************
 
@@ -91,33 +95,36 @@ namespace api_carrental.Controllers
         // POST api/<AppUserDtController>
         [HttpPost]
         //ALLA SKA KUNNA SKAPA KONTO SJÄLVA
-        public async Task<IActionResult> PostUserAsync(ApplicationUserDto userDto)
+        public async Task<IActionResult> PostUserAsync(CreateNewUserDto newUser)
         {
+
             if (!ModelState.IsValid)
             {
                 return BadRequest("Something went wrong. Please try again.");
             }
 
             try
-            {                    
-                // Skapa användaren via repo – och få IdentityResult tillbaka
-
-                var result = await _applicationUser.AddCustomerAsync(userDto);
-
-                if (result.Succeeded)
+            {
+                var (addingResult, createdUserDto) = await _applicationUser.AddCustomerAsync(newUser);
+                if (addingResult.Succeeded && createdUserDto != null)
                 {
-                    //om skapandet lyckades, tilldela rollen "Customer"
-                    var user = await _userManager.FindByEmailAsync(userDto.Email);
-                    if (user != null)
-                    {
-                        await _userManager.AddToRoleAsync(user, "Customer");
-                        return Ok("New customer created!");
-                    }                                        
-                    return BadRequest("Something went wrong. Please try again.");
+                    // Skapa URI:n manuellt atm
+                    string resourceUri = $"/api/AppUserDt/{createdUserDto.Id}";
+
+                    // Svara med Status 201 Created med URI + DTO
+                    return Created(resourceUri, createdUserDto);
                 }
-                return BadRequest("Unexpected error. Please try again.");
+                else
+                {
+                    // Registration failed (Identity validation - lösenord/email)
+                    var identityErrors = addingResult.Errors.Select(e => e.Description);
+                    return BadRequest(new { Errors = identityErrors, Message = "Registration failed (Identity validation)." });
+                }
             }
-            catch {return BadRequest("Unexpected error. Please try again.");}
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Unexpected server error during user creation.", Debug = ex.Message });
+            }
         }
 
         // UPPDATERA KUND

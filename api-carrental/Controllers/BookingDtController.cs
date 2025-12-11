@@ -43,12 +43,18 @@ namespace api_carrental.Controllers
             return Ok(booking);
         }
 //****************************************************************************************
-        // POST api/<BookingController>
+        // POST api/<BookingDtController>
         // DVS SKAPA NY BOKNING
         [HttpPost]
         [Authorize]
         public async Task<ActionResult<BookingDto>> Post([FromBody] BookingDto booking)
         {
+            if (!ModelState.IsValid)
+            {
+                // Returnera detaljerade valideringsfel som orsakade 400 Bad Request i UI:t
+                return BadRequest(ModelState);
+            }
+
             string currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var vehicle = await _vehicleRepo.GetVehicleByIDAsync(booking.VehicleId);
             if (vehicle == null)

@@ -12,6 +12,10 @@ namespace api_carrental.Data
             CreateMap<ApplicationUserDto, LoginUserDto>().ReverseMap();
             CreateMap<LoginUserDto, ApplicationUserDto>().ReverseMap();
 
+            CreateMap<ApplicationUserDto, CreateNewUserDto>().ReverseMap();
+            CreateMap<CreateNewUserDto, ApplicationUserDto>().ReverseMap();
+
+
             //CreateMap<VehicleViewModel, Vehicle>().ReverseMap();
             //CreateMap<Vehicle, VehicleViewModel>().ReverseMap();
 

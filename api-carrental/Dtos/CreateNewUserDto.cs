@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace assignment_mvc_carrental.ViewModels
+namespace api_carrental.Dtos
 {
-    public class UserInputViewModel
+    public class CreateNewUserDto
     {
         [Required(ErrorMessage = "First name is required.")]
         public string FirstName { get; set; }
@@ -31,13 +31,10 @@ namespace assignment_mvc_carrental.ViewModels
         public string UserName => Email; // Använd email som username
 
 
-
         [Required(ErrorMessage = "Password is required.")]
         [DataType(DataType.Password)]
         public string Password { get; set; }
 
-        public List<BookingViewModel> BookingsList { get; set; } = new List<BookingViewModel>();
-
+        public List<BookingDto> BookingsList { get; set; } = new List<BookingDto>();
     }
-
 }

@@ -86,7 +86,6 @@ namespace assignment_mvc_carrental.Controllers
             }
         }
 
-
         //***********************************************************************************************************************
 
          //GET: CustomerVM/Register
@@ -105,21 +104,17 @@ namespace assignment_mvc_carrental.Controllers
                 return View(userInput);
             }
             try
-            {
-                // 1. Mappa Input-VM till DTO:t 
-                var newCustomerForApi = _mapper.Map<ApplicationUser>(userInput);
-
-                // 2. Ropa på API:et (Samma endpoint som Create)                
+            {                               
                 var _client = _clientfactory.CreateClient("CarRentalApi");
 
-                var response = await _client.PostAsJsonAsync("api/AppUserDt", newCustomerForApi);
+                var response = await _client.PostAsJsonAsync("api/AppUserDt", userInput);
 
                 if (response.IsSuccessStatusCode)
                 {
                     // OBS: Jag har ändrat meddelandet för att vara mer logiskt för registrering.
                     TempData["SuccessMessage"] = "Registration successful! You can now log in.";
 
-                    return RedirectToAction("Home/Index");
+                    return View("~/Views/Home/Index.cshtml");
                 }
                 else if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
                 {
@@ -214,8 +209,6 @@ namespace assignment_mvc_carrental.Controllers
         }
 
         //POST: CustomerVM/Edit/5
-        //To protect from overposting attacks, enable the specific properties you want to bind to.
-        //For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -396,35 +389,12 @@ namespace assignment_mvc_carrental.Controllers
         {
             return View("~/Views/AdminViews/AdminLogin.cshtml");
         }
-
-        //[HttpPost("/admin")]
-        //[ValidateAntiForgeryToken]
-        //public async Task<IActionResult> AdminLogin(string email, string password)
-        //{
-        //    var user = await _userManager.FindByEmailAsync(email); //leta användare
-
-        //    if (user != null && await _userManager.IsInRoleAsync(user, "Admin")) //kolla om användaren är admin
-        //    {
-        //        var result = await _signInManager.PasswordSignInAsync(user, password, false, false);
-        //        if (result.Succeeded)
-        //        {
-        //            return RedirectToAction("AdminPanel");  //gå vidare vid lyckad inloggning
-        //        }
-        //    }
-        //    //Om inloggningen misslyckas, skicka tillbaka till inloggningssidan med felmeddelande
-        //    TempData["ErrorMessage"] = "Invalid login or you are not an admin.";
-        //    return View("~/Views/AdminViews/AdminLogin.cshtml");
-        //}
-
         [Authorize(Roles = "Admin")]
         [HttpGet]
         public IActionResult AdminPanel()
         {
             return View("~/Views/AdminViews/AdminPanel.cshtml");
         }
-
-
-        //Details används inte
 
         // GET: CustomerVM/Details/5
         public async Task<IActionResult> Details(string? id)

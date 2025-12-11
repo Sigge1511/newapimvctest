@@ -206,40 +206,6 @@ namespace api_carrental.Controllers
         }
 
 //*********************** EV FÖRNYA TOKENS *****************************************************
-        [HttpPost("refresh")]
-        [AllowAnonymous]
-        public async Task<IActionResult> NeedNewTokens([FromBody] RefreshTokenRequest request)
-        {
-            // Koll av argument
-            if (request == null || string.IsNullOrEmpty(request.RefreshToken))
-            {
-                _logger.LogWarning("Refresh request received without a token.");
-                return BadRequest(new { message = "You've been logged out." });
-            }
-
-            try
-            {
-                // Kollar:
-                // a) Validering av RT 
-                // b) Koll mot db
-                // c) Ny AT/RT 
-                TokenCollection newTokenPair = await CheckRefreshToken(request.RefreshToken);
-                //Svara med nya tokens om det gick bra
-                return Ok(newTokenPair);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                // Annars 401 och logga ut användaren helt.
-                _logger.LogWarning(ex, "Refresh token-validation failed.");
-                return Unauthorized(new { message = "You've been logged out due to inactivity." });
-            }
-            catch (Exception ex)
-            {
-                // 5. Oväntat Serverfel
-                _logger.LogError(ex, "Something went wrong.");
-                return StatusCode(500, new { message = "Something went wrong." });
-            }
-        }
         public async Task<TokenCollection> CheckRefreshToken(string refreshToken)
         {
             // Förbered handler och variabler
@@ -300,6 +266,40 @@ namespace api_carrental.Controllers
                 _logger.LogError(ex, "An error occurred.");
                 var emptyTokenPair = new TokenCollection();
                 return emptyTokenPair;
+            }
+        }
+        [HttpPost("refresh")]
+        [AllowAnonymous]
+        public async Task<IActionResult> NeedNewTokens([FromBody] RefreshTokenRequest request)
+        {
+            // Koll av argument
+            if (request == null || string.IsNullOrEmpty(request.RefreshToken))
+            {
+                _logger.LogWarning("Refresh request received without a token.");
+                return BadRequest(new { message = "You've been logged out." });
+            }
+
+            try
+            {
+                // Kollar:
+                // a) Validering av RT 
+                // b) Koll mot db
+                // c) Ny AT/RT 
+                TokenCollection newTokenPair = await CheckRefreshToken(request.RefreshToken);
+                //Svara med nya tokens om det gick bra
+                return Ok(newTokenPair);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                // Annars 401 och logga ut användaren helt.
+                _logger.LogWarning(ex, "Refresh token-validation failed.");
+                return Unauthorized(new { message = "You've been logged out due to inactivity." });
+            }
+            catch (Exception ex)
+            {
+                // 5. Oväntat Serverfel
+                _logger.LogError(ex, "Something went wrong.");
+                return StatusCode(500, new { message = "Something went wrong." });
             }
         }
 
