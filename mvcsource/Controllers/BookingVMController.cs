@@ -60,7 +60,7 @@ namespace assignment_mvc_carrental.Controllers
             try 
             {
                 // Deklarera det som skickas till vyn (BookingViewModel)
-                BookingViewModel? viewModel = new BookingViewModel { VehicleId = vehicleId ?? 0 }; 
+                InputBookingViewModel? viewModel = new InputBookingViewModel { VehicleId = vehicleId ?? 0 }; 
                 List<Vehicle>? vehiclesList = null;
 
                 // Anropar API GET för fordon. Rutt: "VehicleDt"
@@ -100,7 +100,7 @@ namespace assignment_mvc_carrental.Controllers
         [Authorize]
         [ActionName("Create")]
         [HttpPost]
-        public async Task<IActionResult> CreateReservation(BookingViewModel inputBookingVM)
+        public async Task<IActionResult> CreateReservation(InputBookingViewModel inputBookingVM)
         {
             var today = DateOnly.FromDateTime(DateTime.Today);
             if (inputBookingVM.StartDate < today)
@@ -131,8 +131,8 @@ namespace assignment_mvc_carrental.Controllers
                 }
 
                 // Mappa från ViewModel till modellklass
-                var bookingToSend = _mapper.Map<Booking>(inputBookingVM);
-                bookingToSend.ApplicationUserId = userId;
+                //var bookingToSend = _mapper.Map<Booking>(inputBookingVM);
+                inputBookingVM.ApplicationUserId = userId;
 
                 var accessToken = FetchAccessTokenInfo();
                 var _client = _clientfactory.CreateClient("CarRentalApi");
@@ -141,7 +141,7 @@ namespace assignment_mvc_carrental.Controllers
                         new System.Net.Http.Headers
                         .AuthenticationHeaderValue("Bearer", accessToken); 
                 
-                var response = await _client.PostAsJsonAsync("api/BookingDt", bookingToSend);
+                var response = await _client.PostAsJsonAsync("api/BookingDt", inputBookingVM);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -168,7 +168,7 @@ namespace assignment_mvc_carrental.Controllers
         }
 
         // Hjälpmetod för att hantera att ladda om vyn vid fel
-        private async Task<IActionResult> HandleFailedPost(BookingViewModel inputBookingVM, string errorMessage)
+        private async Task<IActionResult> HandleFailedPost(InputBookingViewModel inputBookingVM, string errorMessage)
         {
             TempData["ErrorMessage"] = errorMessage;
             ModelState.AddModelError(string.Empty, errorMessage);

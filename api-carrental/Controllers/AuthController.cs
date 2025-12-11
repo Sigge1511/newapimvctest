@@ -304,37 +304,38 @@ namespace api_carrental.Controllers
         }
 
         //*********************** LOGGA UT *****************************************************
-        [HttpPost("logout")]
-        public async Task<IActionResult> Logout()
-        {
-            try
-            {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                var currentUser = await _userManager.FindByIdAsync(userId);
-                if (currentUser != null)
-                {
-                    // Nolla allt med tokens
-                    currentUser.RefreshTokenValue = null;
-                    currentUser.RefreshTokenExpiryTime = DateTime.Now;
 
-                    var updateResult = await _userManager.UpdateAsync(currentUser);
+        //[HttpPost("logout")]  BÄTTRE LYCKA NÄSTA GÅNG. FUNKTIONEN ÄR EJ FÄRDIGBYGGD
+        //public async Task<IActionResult> Logout()
+        //{
+        //    try
+        //    {
+        //        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //        var currentUser = await _userManager.FindByIdAsync(userId);
+        //        if (currentUser != null)
+        //        {
+        //            // Nolla allt med tokens
+        //            currentUser.RefreshTokenValue = null;
+        //            currentUser.RefreshTokenExpiryTime = DateTime.Now;
 
-                    if (!updateResult.Succeeded)
-                    {
-                        _logger.LogError($"Failed to revoke RT for user {currentUser.Email}");
-                        return StatusCode(500, new { message = "Logout failed due to DB error." });
-                    }
-                }
-                await _signInManager.SignOutAsync();
+        //            var updateResult = await _userManager.UpdateAsync(currentUser);
 
-                _logger.LogInformation($"User {userId} successfully logged out and RT revoked.");
-                return Ok(new { message = "Logged out successfully" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "An error occurred during logout.");
-                return StatusCode(500, new { message = "Something went wrong. Please try again." });
-            }
-        }
+        //            if (!updateResult.Succeeded)
+        //            {
+        //                _logger.LogError($"Failed to revoke RT for user {currentUser.Email}");
+        //                return StatusCode(500, new { message = "Logout failed due to DB error." });
+        //            }
+        //        }
+        //        await _signInManager.SignOutAsync();
+
+        //        _logger.LogInformation($"User {userId} successfully logged out and RT revoked.");
+        //        return Ok(new { message = "Logged out successfully" });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "An error occurred during logout.");
+        //        return StatusCode(500, new { message = "Something went wrong. Please try again." });
+        //    }
+        //}
     }
 }

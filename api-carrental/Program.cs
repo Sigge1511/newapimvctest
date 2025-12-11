@@ -12,6 +12,7 @@ using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text;
+using System.Text.Json.Serialization;
 
 
 //Skapar denna här så jag kan ha en builder även i detta projekt/fil
@@ -33,6 +34,7 @@ builder.Services.AddControllers()
     {
         // Denna rad instruerar serialiseraren att INTE använda camelCase
         options.JsonSerializerOptions.PropertyNamingPolicy = null;
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     });
 
 

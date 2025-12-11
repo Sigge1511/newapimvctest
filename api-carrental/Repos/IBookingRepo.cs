@@ -1,4 +1,5 @@
 ﻿using api_carrental.Dtos;
+using Microsoft.AspNetCore.Mvc;
 
 namespace api_carrental.Repos
 {
@@ -6,7 +7,7 @@ namespace api_carrental.Repos
     {
         Task<IEnumerable<BookingDto>> GetAllBookingsAsync();
         Task<BookingDto?> GetBookingByIdAsync(int id);
-        Task AddBookingAsync(BookingDto booking);
+        Task<BookingDto> AddBookingAsync(CreatingBookingDto booking);
         Task UpdateBookingAsync(BookingDto booking);
         Task DeleteBookingAsync(int id);
     }

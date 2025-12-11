@@ -1,12 +1,15 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using api_carrental.Data;
 using api_carrental.Dtos;
+using AutoMapper;
+using Microsoft.AspNetCore.Mvc;
 
 namespace api_carrental.Repos
 {
     public class BookingRepo : IBookingRepo
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext _context;        
+
         public BookingRepo(ApplicationDbContext context)
         {
             _context = context;
@@ -23,12 +26,34 @@ namespace api_carrental.Repos
                 .Include(b => b.ApplicationUser) // hämta med info om bil och user med bokningen
                 .FirstOrDefaultAsync(b => b.Id == id);
         }
-        public async Task AddBookingAsync(BookingDto booking)
+        public async Task<BookingDto> AddBookingAsync(CreatingBookingDto bookingInput)
         {
-            booking.ApplicationUser = null;
-            booking.Vehicle = null;
-            _context.BookingSet.Add(booking);
-            await _context.SaveChangesAsync();
+            try
+            {
+                //bookingInput.ApplicationUser = null;
+                //bookingInput.Vehicle = null;
+                var getUser = await _context.AppUserSet.FindAsync(bookingInput.ApplicationUserId);
+                var getVehicle = await _context.VehicleSet.FindAsync(bookingInput.VehicleId);
+
+                var newBookingDto = new BookingDto
+                {
+                    ApplicationUserId = bookingInput.ApplicationUserId,
+                    ApplicationUser = getUser,
+                    VehicleId = bookingInput.VehicleId,
+                    Vehicle = getVehicle,
+                    StartDate = bookingInput.StartDate,
+                    EndDate = bookingInput.EndDate,
+                    TotalPrice = bookingInput.TotalPrice,
+                };
+
+                _context.BookingSet.Add(newBookingDto);
+                await _context.SaveChangesAsync();
+                return newBookingDto;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error adding reservation: " + ex.Message, ex);
+            }
         }
         public async Task UpdateBookingAsync(BookingDto booking)
         {

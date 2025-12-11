@@ -109,7 +109,12 @@ namespace assignment_mvc_carrental.Controllers
             }
         }
 
-
+        //public async IActionResult LogOutAsync() SKITER I DENNA JUST NU. SORRY :/
+        //{
+        //    var _client = _clientfactory.CreateClient("CarRentalApi");
+        //    var result = await _client.LogOut("api/Auth/login", loginUser);
+        //    return View();
+        //}
         public IActionResult Index()
         {
             return View();

@@ -6,13 +6,12 @@ using Microsoft.Extensions.ObjectPool;
 using System.Security.Claims;
 using System.Text;
 
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace api_carrental.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-        
+
     public class BookingDtController : ControllerBase
     {
         private readonly IBookingRepo _bookingRepo;
@@ -23,7 +22,7 @@ namespace api_carrental.Controllers
             _bookingRepo = bookingRepo;
             _vehicleRepo = vehicleRepo;
         }
-//******************* HÄMTA ALLA BOKNINGAR ***********************
+        //******************* HÄMTA ALLA BOKNINGAR ***********************
         // GET: api/<BookingController>
         [Authorize(Roles = "Admin")]
         [HttpGet]
@@ -32,7 +31,7 @@ namespace api_carrental.Controllers
             var bookings = await _bookingRepo.GetAllBookingsAsync();
             return Ok(bookings);
         }
-//******************* HÄMTA EN BOKNING VIA ID ***********************
+        //******************* HÄMTA EN BOKNING VIA ID ***********************
         // GET api/<BookingController>/5
         [HttpGet("{id}")]
         [Authorize]
@@ -42,12 +41,12 @@ namespace api_carrental.Controllers
             if (booking is null) return NotFound();
             return Ok(booking);
         }
-//****************************************************************************************
+        //****************************************************************************************
         // POST api/<BookingDtController>
         // DVS SKAPA NY BOKNING
         [HttpPost]
         [Authorize]
-        public async Task<ActionResult<BookingDto>> Post([FromBody] BookingDto booking)
+        public async Task<ActionResult<BookingDto>> Post([FromBody] CreatingBookingDto booking)
         {
             if (!ModelState.IsValid)
             {
@@ -56,6 +55,10 @@ namespace api_carrental.Controllers
             }
 
             string currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (currentUserId == null)
+            {
+                return Unauthorized("User information not found.");
+            }
             var vehicle = await _vehicleRepo.GetVehicleByIDAsync(booking.VehicleId);
             if (vehicle == null)
             {
@@ -64,27 +67,41 @@ namespace api_carrental.Controllers
             }
             var days = (booking.EndDate.DayNumber - booking.StartDate.DayNumber) + 1;
             // Kolla om bilen är tillgänglig            
-                bool isAvailable = await _vehicleRepo.IsVehicleAvailableAsync(
-                booking.VehicleId,
-                booking.StartDate,
-                booking.EndDate
-            );
+            bool isAvailable = await _vehicleRepo.IsVehicleAvailableAsync(
+            booking.VehicleId,
+            booking.StartDate,
+            booking.EndDate
+        );
 
             if (!isAvailable)
             {
                 return BadRequest("The selected vehicle is already booked during the specified period.");
             }
+            try
+            {
+                booking.ApplicationUserId = currentUserId; // Lägg till ID från token!
+                booking.TotalPrice = vehicle.PricePerDay * days;
+                BookingDto createdBooking = await _bookingRepo.AddBookingAsync(booking);
 
-            booking.ApplicationUserId = currentUserId; // Lägg till ID från token!
-            booking.TotalPrice = vehicle.PricePerDay * days;            
-            await _bookingRepo.AddBookingAsync(booking);
+                if (createdBooking == null || createdBooking.Id == 0) // Kontrollera även att ID har satts
+                {
+                    // Returnera 500 Internal Server Error
+                    return StatusCode(500, "Internal server error: Failed to save the booking.");
+                }
 
-            return CreatedAtAction(nameof(Get), new { id = booking.Id }, booking);
+                string resourceUri = $"/api/BookingDt/{createdBooking.Id}";
+                return Created(resourceUri, createdBooking);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "An error occurred while creating the reservation. " + ex.Message);
+            }
         }
-//****************************************************************************************    
+        //****************************************************************************************    
         // PUT api/<BookingController>/5
         // DVS UPPDATERA BOKNING
         [HttpPut("{id}")]
+        [Authorize]
         public async Task<IActionResult> Put(int id, [FromBody] BookingDto bookingDto)
         {
             if (id != bookingDto.Id)
@@ -109,7 +126,7 @@ namespace api_carrental.Controllers
             {
                 // 304 Not Modified är den korrekta HTTP-statusen här.
                 return StatusCode(304);
-            }            
+            }
 
             var vehicle = await _vehicleRepo.GetVehicleByIDAsync(bookingDto.VehicleId);
             if (vehicle == null)
@@ -149,11 +166,13 @@ namespace api_carrental.Controllers
 
         // DELETE api/<BookingController>/5
         [HttpDelete("{id}")]
+        [Authorize]
         public async Task<IActionResult> Delete(int id)
         {
             await _bookingRepo.DeleteBookingAsync(id);
             return NoContent();
         }
-            
+
     }
 }
+
